@@ -15,47 +15,8 @@ from django.utils.formats import date_format
 from django.utils import timezone
 import requests
 
-
+from .utils import map_printer_status
 from .models import Printers
-
-########## Helper functions ##########
-
-# used gpt to map the status flags
-def map_printer_status(state: str) -> str:
-    """
-    Map raw printer state string -> one of:
-    'operational', 'paused', 'printing', 'error', 'ready', 'busy'
-    """
-    s = (state or "").strip().lower()
-
-    # Error-ish states: treat anything with 'error' as error
-    if "error" in s or "fault" in s:
-        return "error"
-
-    if s == "printing":
-        return "printing"
-
-    if s == "paused":
-        return "paused"
-
-    # Finished prints: you might want this to look "ready" in the UI
-    if s == "finished":
-        return "ready"
-
-    # Stopped / cancelled / attention → busy-ish
-    if s in ("stopped", "attention", "busy"):
-        return "busy"
-
-    # Idle = ready to go
-    if s == "idle":
-        return "ready"
-
-    # Operational: generic "on but nothing special"
-    if s in ("operational", "online"):
-        return "operational"
-
-    # Unknown state: safest to call it busy
-    return "busy"
 
 
 ########## Django views ##########
@@ -132,11 +93,10 @@ def individual_printer_api(request):
                 status=502,
             )
     # printer_actual = PrusaLinkPy.PrusaLinkPy("130.64.80.20", "3DnwmRCgJAVq66L")
-    # Get combined status info from the printer
+
     # resp = printer_actual.get_status()
     status = resp.json()
 
-    # Safely pull values with defaults in case something's missing
     printer_info = status.get("printer", {})
     job_info     = status.get("job", {})
 
@@ -165,6 +125,9 @@ def individual_printer_api(request):
         payload["time_remaining"] = (round(time_remaining / 60), 2) # convert to min
         payload["time_units"]     = " minutes"    
 
+    if request.user.is_superuser:
+        success_rate = int(printer_djobj.successful_prints / printer_djobj.total_print_count)
+        # printing_uptime
 
     return JsonResponse(payload, safe=False)
 
@@ -174,7 +137,6 @@ def upload_bgcode_api(request):
     if uploaded_file is None:
         return JsonResponse({"error": "No file uploaded"}, status=400)
 
-    # Get printer config from slug
     slug = request.POST.get("slug")
     printer_djobj = get_object_or_404(Printers.objects.filter(slug=slug))
     printer_actual = PrusaLinkPy.PrusaLinkPy(str(printer_djobj.host), str(printer_djobj.api_key))
