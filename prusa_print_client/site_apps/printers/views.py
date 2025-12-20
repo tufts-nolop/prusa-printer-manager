@@ -1,0 +1,229 @@
+import json
+import os
+from pathlib import Path
+import tempfile
+import PrusaLinkPy
+
+from django.http import HttpResponseBadRequest, JsonResponse
+from django.views.decorators.http import require_POST
+from django.shortcuts import get_object_or_404, render
+from django.views.generic.list import ListView
+from django.forms.models import model_to_dict
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+from django.utils.formats import date_format
+from django.utils import timezone
+import requests
+
+
+from .models import Printers
+
+########## Helper functions ##########
+
+# used gpt to map the status flags
+def map_printer_status(state: str) -> str:
+    """
+    Map raw printer state string -> one of:
+    'operational', 'paused', 'printing', 'error', 'ready', 'busy'
+    """
+    s = (state or "").strip().lower()
+
+    # Error-ish states: treat anything with 'error' as error
+    if "error" in s or "fault" in s:
+        return "error"
+
+    if s == "printing":
+        return "printing"
+
+    if s == "paused":
+        return "paused"
+
+    # Finished prints: you might want this to look "ready" in the UI
+    if s == "finished":
+        return "ready"
+
+    # Stopped / cancelled / attention → busy-ish
+    if s in ("stopped", "attention", "busy"):
+        return "busy"
+
+    # Idle = ready to go
+    if s == "idle":
+        return "ready"
+
+    # Operational: generic "on but nothing special"
+    if s in ("operational", "online"):
+        return "operational"
+
+    # Unknown state: safest to call it busy
+    return "busy"
+
+
+########## Django views ##########
+
+class PrintersListView(ListView):
+    model = Printers
+    template_name = "printer_dashboard.html"
+
+
+def get_printer(request, slug):
+    printer = get_object_or_404(Printers.objects.filter(slug=slug))
+
+    return render(
+        request,
+        "single_printer.html",
+        {"printer": printer},
+    )
+
+
+
+########## AJAX functions/API calls ##########
+
+def printers_status_api(request):
+    data = []
+
+    for printer in Printers.objects.all():
+        status = "offline"  # default if anything goes wrong
+
+        try:
+            client = PrusaLinkPy.PrusaLinkPy(printer.host, api_key=printer.api_key)
+
+            resp = client.get_status()
+            resp.raise_for_status()  # raises for HTTP 4xx/5xx
+
+            status_json = resp.json()
+            raw_state = status_json.get("printer", {}).get("state")
+
+            if raw_state is not None:
+                status = map_printer_status(raw_state)
+            else:
+                # if for some reason there's no state, treat as busy/error-ish
+                status = "busy"
+
+        except (requests.exceptions.RequestException, ValueError, KeyError) as e:
+            # Printer unreachable, bad response, or JSON shape not as expected
+            # status stays "offline"
+            # you can log e here if you want
+            pass
+
+        data.append({
+            "slug": printer.slug,
+            "status": status,
+        })
+
+    return JsonResponse(data, safe=False)
+
+
+@require_POST
+def individual_printer_api(request):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return HttpResponseBadRequest("Invalid JSON")
+    
+    printer_djobj = get_object_or_404(Printers.objects.filter(slug=data["slug"]))
+    printer_actual = PrusaLinkPy.PrusaLinkPy(str(printer_djobj.host), str(printer_djobj.api_key))
+    try:
+        resp = printer_actual.get_status()
+    except:
+        return JsonResponse(
+                {
+                    "error": "Printer unavailable"
+                },
+                status=502,
+            )
+    # printer_actual = PrusaLinkPy.PrusaLinkPy("130.64.80.20", "3DnwmRCgJAVq66L")
+    # Get combined status info from the printer
+    # resp = printer_actual.get_status()
+    status = resp.json()
+
+    # Safely pull values with defaults in case something's missing
+    printer_info = status.get("printer", {})
+    job_info     = status.get("job", {})
+
+    dt = printer_djobj.last_maintenance
+    dt = timezone.localtime(dt)  # optional: convert to local time
+
+    nozzle_temp    = printer_info.get("temp_nozzle", 0)        # °C
+    bed_temp       = printer_info.get("temp_bed", 0)           # °C
+    progress       = job_info.get("progress", 0)               # percent (0–100)
+    time_remaining = job_info.get("time_remaining", 0)        # seconds
+    curr_status    = map_printer_status(printer_info["state"])
+    date_string    = date_format(dt, "Y-m-d")
+    
+
+    payload = model_to_dict(printer_djobj)
+    payload["nozzle_temp"]      = nozzle_temp
+    payload["bed_temp"]         = bed_temp
+    payload["progress"]         = progress
+    payload["curr_status"]      = curr_status
+    payload["last_maintenance"] = date_string
+
+    if (time_remaining / 60) > 100:
+        payload["time_remaining"] = round(((time_remaining / 60) / 60), 2) # convert to hours if big
+        payload["time_units"]     = " hours"
+    else:
+        payload["time_remaining"] = (round(time_remaining / 60), 2) # convert to min
+        payload["time_units"]     = " minutes"    
+
+
+    return JsonResponse(payload, safe=False)
+
+
+def upload_bgcode_api(request):
+    uploaded_file = request.FILES.get("file")
+    if uploaded_file is None:
+        return JsonResponse({"error": "No file uploaded"}, status=400)
+
+    # Get printer config from slug
+    slug = request.POST.get("slug")
+    printer_djobj = get_object_or_404(Printers.objects.filter(slug=slug))
+    printer_actual = PrusaLinkPy.PrusaLinkPy(str(printer_djobj.host), str(printer_djobj.api_key))
+
+
+    # Write to a temporary file ONLY so PrusaLinkPy can read it
+    suffix = Path(uploaded_file.name).suffix or ".bgcode"
+    tmp_path = None
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            for chunk in uploaded_file.chunks():
+                tmp.write(chunk)
+            tmp_path = tmp.name
+
+        # remote path
+        remote_dir = "PRINT_QUEUE"
+        remote_name = uploaded_file.name
+        remote_path = f"{remote_dir}/{remote_name}"
+
+        # NO AUTOSTART, THEY MUST BE AT THE PRINTER
+        resp = printer_actual.put_gcode(
+            tmp_path,
+            remote_path,
+            printAfterUpload=False,
+            overwrite=True,
+        )
+
+        if resp.status_code != 200:
+            return JsonResponse(
+                {
+                    "error": "Printer upload failed",
+                    "printer_status_code": resp.status_code,
+                    "printer_body": resp.text,
+                },
+                status=502,
+            )
+
+        return JsonResponse(
+            {
+                "ok": True,
+                "filename": uploaded_file.name,
+                "remote_path": remote_path,
+            }
+        )
+
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except PermissionError:
+                pass

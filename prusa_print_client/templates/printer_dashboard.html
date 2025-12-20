@@ -1,0 +1,95 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nolop Printer Dashboard</title>
+    <link rel="stylesheet" media="all" href="{% static 'css/style.css' %}" type="text/css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Nolop Printer Dashboard</h1>
+        </header>
+
+        <div id="gridView" class="grid-view"></div>
+    </div>
+
+    <script>
+        // Sample data - replace this with your backend API call
+        const printers = 
+        [
+            {% for printer in object_list %} 
+                {
+                    slug: '{{ printer.slug|escapejs }}',
+                    name: '{{ printer.name|escapejs }}',
+                    model: '{{ printer.model|escapejs }}',
+                    url: '{{ printer.get_absolute_url }}',
+                    {% if printer.model == "mk4" %}
+                        icon: "<img src='{% static 'images/mk4.png' %}'/>"
+                    {% else %}
+                        icon: "<img src='{% static 'images/coreone.png' %}'/>"
+                    {% endif %}
+                },
+            {% endfor %}
+        ];
+
+        function renderGrid(statusMap = {}) {
+            const gridView = document.getElementById('gridView');
+            gridView.innerHTML = '';
+
+            printers.forEach(printer => {
+                const status = statusMap[printer.slug] || 'unknown';
+
+                const card = document.createElement('a');
+                card.className = 'printer-card';
+                card.href = printer.url;
+                card.innerHTML = `
+                    <div class="printer-icon">${printer.icon}</div>
+                    <div class="printer-name">${printer.name}</div>
+                    <div class="printer-model">${printer.model}</div>
+                    <div class="status-badge status-${status}" id="printer-status-${printer.slug}">
+                    ${status.charAt(0).toUpperCase() + status.slice(1)}
+                        </div>
+                `;
+                gridView.appendChild(card);
+            });
+        }
+
+
+        async function fetchStatuses() {
+            try {
+                const response = await fetch("{% url 'printers:printers_status_api' %}");
+                const data = await response.json();
+
+                const statusMap = {};
+                data.forEach(item => {
+                    statusMap[item.slug] = item.status;
+                    console.log(item.status);
+                });
+
+                Object.entries(statusMap).forEach(([slug, status]) => {
+                    const el = document.getElementById(`printer-status-${slug}`);
+                    if (!el) return;
+                    el.className = `status-badge status-${status}`;
+                    el.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+                });
+
+            } catch (err) {
+                console.error("Failed to fetch printer statuses:", err);
+            }
+        }
+
+
+        renderGrid();
+
+        fetchStatuses();
+
+        setInterval(fetchStatuses, 3000);
+    </script>
+</body>
+
+</html>

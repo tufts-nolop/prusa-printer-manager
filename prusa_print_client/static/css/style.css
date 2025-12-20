@@ -1,0 +1,141 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #E67E22 0%, #D35400 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+header {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    padding: 20px 30px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+h1 {
+    color: #ffffff;
+    font-size: 28px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.grid-view {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+}
+
+.printer-card {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+    display: block;
+}
+
+.printer-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.printer-icon {
+    font-size: 64px;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.printer-name {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.printer-model {
+    font-size: 14px;
+    color: #666;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    width: 100%;
+}
+
+.status-ready {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.status-paused {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.status-printing {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.status-operational {
+    background: #e0e7ff;
+    color: #6366f1;
+}
+
+.status-error {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.status-busy {
+    background: #fce7f3;
+    color: #db2777;
+}
+
+.status-finished {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.status-stopped {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.status-attention {
+    background: #fed7aa;
+    color: #ea580c;
+}
+
+.status-idle {
+    background: #e0f2fe;
+    color: #0284c7;
+}
+
+.status-online {
+    background: #dbeafe;
+    color: #0ea5e9;
+}

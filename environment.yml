@@ -1,0 +1,13 @@
+    name: nolop-printers 
+    channels:
+      - defaults
+      - conda-forge
+    dependencies:
+      - python=3.13
+      - pip
+      - Django=5.2.8
+      - requests
+      - pip:
+        - PrusaLinkPy==2.2.1
+        - django-file-form==4.0.0
+        - requests
