@@ -9,5 +9,4 @@
       - requests
       - pip:
         - PrusaLinkPy==2.2.1
-        - django-file-form==4.0.0
         - requests
