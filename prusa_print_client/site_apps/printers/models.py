@@ -19,12 +19,16 @@ class Printers(models.Model):
     last_maintenance = models.DateField(auto_now=False, auto_now_add=False, null=True, blank=True)
 
     # bookkeeping for print count
-    last_job_id = models.CharField(max_length=64, unique=True)
+    last_job_id = models.CharField(max_length=64, null=True, blank=True)
 
     # stats for curiosity's sake
     total_print_count = models.PositiveIntegerField(null=True, blank=True)
     successful_prints = models.PositiveIntegerField(null=True, blank=True)
     printing_uptime = models.PositiveIntegerField(null=True, blank=True) # minutes
+    filament_usage_mm = models.FloatField(null=True, blank=True)
+    filament_usage_cm3 = models.FloatField(null=True, blank=True)
+    filament_usage_g = models.FloatField(null=True, blank=True)
+
 
     class Meta:
         verbose_name_plural = "Printers"

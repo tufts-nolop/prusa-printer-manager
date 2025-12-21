@@ -69,6 +69,24 @@
                 </div>
             </div>
 
+            {% if request.user.is_superuser %}
+            <div class="additional-stats">
+                <h3>Printer Statistics</h3>
+                <div class="stat-card">
+                    <div class="stat-label">Successful Print Rate</div>
+                    <div class="stat-value" id="detailTime">{{ success_rate }} %</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Prints To Date</div>
+                    <div class="stat-value" id="detailTime">{{ total_prints }} %</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Filament Used To Date</div>
+                    <div class="stat-value" id="detailTime">{{ total_prints }} %</div>
+                </div>
+            </div>
+            {% endif %}
+
             <div class="actions">
                 <h3>Upload Print File</h3>
                 <div class="upload-section">

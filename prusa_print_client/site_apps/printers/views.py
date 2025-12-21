@@ -126,8 +126,9 @@ def individual_printer_api(request):
         payload["time_units"]     = " minutes"    
 
     if request.user.is_superuser:
-        success_rate = int(printer_djobj.successful_prints / printer_djobj.total_print_count)
-        # printing_uptime
+        payload["success_rate"] = round(float(printer_djobj.successful_prints / printer_djobj.total_print_count), 2)
+        payload["total_prints"] = printer_djobj.total_print_count
+        # total_filament used
 
     return JsonResponse(payload, safe=False)
 
