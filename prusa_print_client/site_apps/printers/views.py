@@ -15,8 +15,8 @@ from django.utils.formats import date_format
 from django.utils import timezone
 import requests
 
-from .utils import map_printer_status
-from .models import Printers
+from .utils import *
+from .models import Printers, PendingJobUsage
 
 
 ########## Django views ##########
@@ -109,6 +109,7 @@ def individual_printer_api(request):
     time_remaining = job_info.get("time_remaining", 0)        # seconds
     curr_status    = map_printer_status(printer_info["state"])
     date_string    = date_format(dt, "Y-m-d")
+    usage_mm, usage_g, usage_cm3, _ = get_filament_usage_from_job(printer_djobj, job_info)
     
 
     payload = model_to_dict(printer_djobj)
@@ -124,11 +125,20 @@ def individual_printer_api(request):
     else:
         payload["time_remaining"] = (round(time_remaining / 60), 2) # convert to min
         payload["time_units"]     = " minutes"    
+        
+    if usage_mm:
+        payload["usage_mm"] = usage_mm
+    if usage_g:
+        payload["usage_g"] = usage_g
+    if usage_cm3:
+        payload["usage_cm3"] = usage_cm3
 
     if request.user.is_superuser:
         payload["success_rate"] = round(float(printer_djobj.successful_prints / printer_djobj.total_print_count), 2)
         payload["total_prints"] = printer_djobj.total_print_count
-        # total_filament used
+        payload["total_filament_usage_mm"] = printer_djobj.filament_usage_mm
+        payload["total_filament_usage_cm3"] = printer_djobj.filament_usage_cm3
+        payload["total_filament_usage_g"] = printer_djobj.filament_usage_g
 
     return JsonResponse(payload, safe=False)
 
@@ -141,6 +151,12 @@ def upload_bgcode_api(request):
     slug = request.POST.get("slug")
     printer_djobj = get_object_or_404(Printers.objects.filter(slug=slug))
     printer_actual = PrusaLinkPy.PrusaLinkPy(str(printer_djobj.host), str(printer_djobj.api_key))
+    
+    usage = get_filament_usage_from_file(uploaded_file)
+    filament_mm = usage.get("mm")
+    filament_g = usage.get("g")
+    filament_cm3 = usage.get("cm3")
+    
 
 
     # Write to a temporary file ONLY so PrusaLinkPy can read it
@@ -175,6 +191,15 @@ def upload_bgcode_api(request):
                 },
                 status=502,
             )
+        
+        if filament_mm is not None or filament_g is not None or filament_cm3 is not None:
+            PendingJobUsage.objects.create(
+                printer=printer_djobj,
+                remote_path=remote_path,
+                filament_mm=filament_mm,
+                filament_g=filament_g,
+                filament_cm3=filament_cm3,
+            )
 
         return JsonResponse(
             {
@@ -183,6 +208,8 @@ def upload_bgcode_api(request):
                 "remote_path": remote_path,
             }
         )
+        
+        
 
     finally:
         if tmp_path and os.path.exists(tmp_path):

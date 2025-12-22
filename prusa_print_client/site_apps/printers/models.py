@@ -3,6 +3,9 @@ from django.urls import reverse
 
 
 class Printers(models.Model):
+    """
+    Represents the physical printers available in Nolop.
+    """
     PRINTERS = [
         ("core_one", "Prusa Core One"),
         ("mk4", "Original Prusa MK4")
@@ -38,3 +41,28 @@ class Printers(models.Model):
 
     def get_absolute_url(self):
         return reverse("printers:get_printer", args={self.slug})
+
+
+class PendingJobUsage(models.Model):
+    """
+    Tracks filament usage for uploaded files that *might* be printed.
+    We match this later when that file actually finishes printing.
+    """
+    printer = models.ForeignKey(
+        Printers,
+        on_delete=models.CASCADE,
+        related_name="pending_jobs",
+    )
+    
+    # should match job["file"]["refs"]["download"] from the printer
+    # e.g. "/PRINT_QUEUE/foo.bgcode"
+    remote_path = models.CharField(max_length=255)
+
+    filament_mm = models.FloatField(null=True, blank=True)
+    filament_g = models.FloatField(null=True, blank=True)
+    filament_cm3 = models.FloatField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.printer.slug} :: {self.remote_path}"

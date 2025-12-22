@@ -69,20 +69,67 @@
                 </div>
             </div>
 
+            <div class="additional-stats">
+                <h3>Projected Filament Usage</h3>
+                <div class="stat-card">
+                    <div class="stat-label">Exact extruded length</div>
+                    <div class="stat-value">
+                        {% if usage_mm %}
+                            {{ usage_mm }}
+                        {% else %}
+                            --mm
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Printed plastic volume</div>
+                    <div class="stat-value">
+                        {% if usage_cm3 %}
+                            {{ usage_cm3 }}
+                        {% else %}
+                            --cm³
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Raw material consumption (mass)</div>
+                    <div class="stat-value">
+                        {% if usage_g %}
+                            {{ usage_g }}
+                        {% else %}
+                            --g
+                    </div>
+                </div>
+            </div>
+
             {% if request.user.is_superuser %}
             <div class="additional-stats">
                 <h3>Printer Statistics</h3>
                 <div class="stat-card">
                     <div class="stat-label">Successful Print Rate</div>
-                    <div class="stat-value" id="detailTime">{{ success_rate }} %</div>
+                    <div class="stat-value">{{ success_rate }} %</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Total Prints To Date</div>
-                    <div class="stat-value" id="detailTime">{{ total_prints }} %</div>
+                    <div class="stat-value">{{ total_prints }}</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Total Filament Used To Date</div>
-                    <div class="stat-value" id="detailTime">{{ total_prints }} %</div>
+                    <div class="stat-label">CHANGE TO DIFFERENT STAT LATER</div>
+                    <div class="stat-value">{{ total_prints }} %</div>
+                </div>
+            </div>
+
+            <div class="additional-stats">
+                <h3>Total Filament Usage</h3>
+                <div class="stat-card">
+                    <div class="stat-label">Total extruded length</div>
+                    <div class="stat-value">{{ total_filament_usage_mm }} mm</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total printed plastic volume</div>
+                    <div class="stat-value">{{ total_filament_usage_cm3 }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total filament mass used</div>
+                    <div class="stat-value">{{ total_filament_usage_g }} %</div>
                 </div>
             </div>
             {% endif %}
