@@ -92,7 +92,6 @@ def individual_printer_api(request):
                 },
                 status=502,
             )
-    # printer_actual = PrusaLinkPy.PrusaLinkPy("130.64.80.20", "3DnwmRCgJAVq66L")
 
     # resp = printer_actual.get_status()
     status = resp.json()
@@ -101,7 +100,7 @@ def individual_printer_api(request):
     job_info     = status.get("job", {})
 
     dt = printer_djobj.last_maintenance
-    dt = timezone.localtime(dt)  # optional: convert to local time
+    dt = timezone.localtime(dt)  # optional: convert to local time?
 
     nozzle_temp    = printer_info.get("temp_nozzle", 0)        # °C
     bed_temp       = printer_info.get("temp_bed", 0)           # °C

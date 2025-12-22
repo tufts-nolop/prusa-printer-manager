@@ -44,7 +44,7 @@ import re
 
 
 
-def extract_filament_usage_from_file(file_obj) -> dict:
+def get_filament_usage_from_file(file_obj) -> dict:
     """
     Given a Prusa sliced .bgcode file, extracts the filament usage of a print 
 
@@ -108,7 +108,7 @@ def estimate_filament_for_stopped_job(job_data, pending_usage):
 
     return used_mm, used_g, used_cm3
 
-def get_filament_from_job(printer, job_data):
+def get_filament_usage_from_job(printer, job_data):
     """
     For a single printer (django object) + its /api/v1/job JSON:
       - If the current job is FINISHED or STOPPED
