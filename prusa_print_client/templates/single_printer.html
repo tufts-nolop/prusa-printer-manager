@@ -328,7 +328,7 @@
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken'),
                 },
-                body: JSON.stringify({ action: action , slug: '{{ printer.slug }}'}),
+                body: JSON.stringify({ action: action, slug: '{{ printer.slug }}'}),
                 credentials: 'same-origin',
             });
             disableActions(false);

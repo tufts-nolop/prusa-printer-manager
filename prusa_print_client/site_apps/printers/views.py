@@ -273,6 +273,5 @@ def printer_commands_api(request):
                     "printer_status_code": resp.status_code,
                     "printer_body": resp.text,
                 },
-                status=502,
             )
 
