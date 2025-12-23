@@ -148,14 +148,16 @@
                 </div>
             </div>
 
-            <!-- Staff feature to be implemented
+            {% if request.user.is_superuser %}
             <div class="actions">
                 <h3>Actions</h3>
                 <div class="action-buttons">
                     <button class="action-btn btn-secondary" onclick="performAction('pause')">Pause</button>
                     <button class="action-btn btn-secondary" onclick="performAction('resume')">Resume</button>
+                    <button class="action-btn btn-danger" onclick="performAction('stop')">Stop Print</button>
                 </div>
-            </div> -->
+            </div>
+            {% endif %}
 
             <!-- <div class="report-section">
                 <h3>Report an Issue</h3>
@@ -211,6 +213,7 @@
         }
 
         async function uploadFile(event) {
+            disableUploadForm(true);
             event.preventDefault();
 
             const fileInput = document.getElementById('fileUpload');
@@ -247,6 +250,7 @@
                 if (!res.ok) {
                     const text = await res.text();
                     throw new Error(`Upload failed: ${res.status} ${text}`);
+                    disableUploadForm(false);
                 }
 
                 const data = await res.json();
@@ -257,10 +261,12 @@
                 });
                 fileInput.value = '';
                 fileInfo.textContent = '';
+                disableUploadForm(false);
             } catch (err) {
                 console.error(err);
                 fileInfo.textContent = 'Error uploading file.';
                 Swal.fire({ icon: 'error', title: 'Upload failed', text: err.message });
+                disableUploadForm(false);
                 }
             }
 
@@ -316,10 +322,16 @@
         }
 
         function performAction(action) {
-            // Replace this with your backend API call
-            // Example: fetch(`/api/printers/${printerId}/actions`, { method: 'POST', body: JSON.stringify({ action }) });
-            alert(
-                `Action performed: ${action.toUpperCase()}\nPrinter ID: ${printerId}\nThis would send a command to your backend.`);
+            disableActions(true);
+            const res = await fetch("{% url 'printers:upload_bgcode_api' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({ action: action , slug: '{{ printer.slug }}'}),
+                credentials: 'same-origin',
+            });
+            disableActions(false);
         }
 
         function submitReport(event) {
@@ -334,6 +346,33 @@
                 `Report Submitted!\n\nPrinter ID: ${printerId}\nIssue Type: ${issueType}\nDescription: ${description}\n\nThis would be sent to your backend.`);
 
             document.getElementById('reportForm').reset();
+        }
+
+        function disableActions(disabled) {
+            const buttons = document.querySelectorAll('.action-btn');
+            buttons.forEach(btn => {
+                btn.disabled = disabled;
+            });
+            
+            if (disabled) {
+                document.getElementById('loadingOverlay').classList.add('active');
+            } else {
+                document.getElementById('loadingOverlay').classList.remove('active');
+            }
+        }
+
+        function disableUploadForm(disabled) {
+            const fileInput = document.getElementById('fileUpload');
+            const submitBtn = document.querySelector('#uploadForm .btn-submit');
+            
+            fileInput.disabled = disabled;
+            submitBtn.disabled = disabled;
+            
+            if (disabled) {
+                document.getElementById('loadingOverlay').classList.add('active');
+            } else {
+                document.getElementById('loadingOverlay').classList.remove('active');
+            }
         }
 
         // Load printer data when page loads

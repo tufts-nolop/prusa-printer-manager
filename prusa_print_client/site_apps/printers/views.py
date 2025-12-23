@@ -19,6 +19,30 @@ from .utils import *
 from .models import Printers, PendingJobUsage
 
 
+########## Helper funcs ##########
+
+def pause_current_print(client):
+    try:
+        resp = client.pause_print()
+        return resp
+    except requests.RequestException as e:
+        print("Error pausing print:", e) # TODO: change this
+
+def resume_current_print(client):
+    try:
+        resp = client.resume_print(client)
+        return resp
+    except requests.RequestException as e:
+        print("Error resuming print:", e) # TODO: change this too 
+
+def stop_current_print(client):
+    try:
+        resp = client.stop_print()
+        return resp
+    except requests.RequestException as e:
+        print("Error stopping print:", e) # TODO: change this as well
+
+
 ########## Django views ##########
 
 class PrintersListView(ListView):
@@ -207,8 +231,6 @@ def upload_bgcode_api(request):
                 "remote_path": remote_path,
             }
         )
-        
-        
 
     finally:
         if tmp_path and os.path.exists(tmp_path):
@@ -216,3 +238,41 @@ def upload_bgcode_api(request):
                 os.unlink(tmp_path)
             except PermissionError:
                 pass
+            
+def printer_commands_api(request):
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return HttpResponseBadRequest("Invalid JSON")
+    
+    if request.user.is_superuser:
+        printer_djobj = get_object_or_404(Printers.objects.filter(slug=data["slug"]))
+        printer_action = data["action"]
+        printer_actual = PrusaLinkPy.PrusaLinkPy(str(printer_djobj.host), str(printer_djobj.api_key))
+        try:
+            resp = printer_actual.get_status()
+        except:
+            return JsonResponse(
+                    {
+                        "error": "Printer unavailable"
+                    },
+                    status=502,
+                )
+
+        if printer_action is "stop":
+            resp = stop_current_print(printer_actual)
+        elif printer_action is "resume":
+            resp = resume_current_print(printer_actual)
+        else:
+            resp = pause_current_print(printer_actual)
+            
+        if resp.status_code and resp.text:
+            return JsonResponse(
+                {
+                    "error": f"Printer action {printer_action.upper()}",
+                    "printer_status_code": resp.status_code,
+                    "printer_body": resp.text,
+                },
+                status=502,
+            )
+

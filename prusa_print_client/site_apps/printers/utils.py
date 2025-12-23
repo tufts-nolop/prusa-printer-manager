@@ -1,5 +1,3 @@
-########## Helper functions ##########
-
 # used gpt to map the status flags
 def map_printer_status(state: str) -> str:
     """
