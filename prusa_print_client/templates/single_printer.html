@@ -69,8 +69,8 @@
                 </div>
             </div>
 
-            <div class="additional-stats">
-                <h3>Projected Filament Usage</h3>
+            <h2 style="padding-bottom: 10px;">Projected Filament Usage</h2>
+            <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-label">Exact extruded length</div>
                     <div class="stat-value">
@@ -78,6 +78,7 @@
                             {{ usage_mm }}
                         {% else %}
                             --mm
+                        {% endif %}
                     </div>
                 </div>
                 <div class="stat-card">
@@ -87,6 +88,7 @@
                             {{ usage_cm3 }}
                         {% else %}
                             --cm³
+                        {% endif %}
                     </div>
                 </div>
                 <div class="stat-card">
@@ -96,13 +98,14 @@
                             {{ usage_g }}
                         {% else %}
                             --g
+                        {% endif %}
                     </div>
                 </div>
             </div>
 
             {% if request.user.is_superuser %}
-            <div class="additional-stats">
-                <h3>Printer Statistics</h3>
+            <h2 style="padding-bottom: 10px;">Printer Statistics</h2>
+            <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-label">Successful Print Rate</div>
                     <div class="stat-value">{{ success_rate }} %</div>
@@ -117,8 +120,7 @@
                 </div>
             </div>
 
-            <div class="additional-stats">
-                <h3>Total Filament Usage</h3>
+            <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-label">Total extruded length</div>
                     <div class="stat-value">{{ total_filament_usage_mm }} mm</div>
