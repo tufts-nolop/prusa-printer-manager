@@ -68,7 +68,6 @@
                 const statusMap = {};
                 data.forEach(item => {
                     statusMap[item.slug] = item.status;
-                    console.log(item.status);
                 });
 
                 Object.entries(statusMap).forEach(([slug, status]) => {
