@@ -5,7 +5,8 @@ import tempfile
 import PrusaLinkPy
 
 from django.http import HttpResponseBadRequest, JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST 
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.shortcuts import get_object_or_404, render
 from django.views.generic.list import ListView
 from django.forms.models import model_to_dict
@@ -97,7 +98,7 @@ def printers_status_api(request):
 
     return JsonResponse(data, safe=False)
 
-
+@ensure_csrf_cookie
 @require_POST
 def individual_printer_api(request):
     try:
