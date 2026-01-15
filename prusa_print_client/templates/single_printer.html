@@ -297,7 +297,6 @@
 
         async function displayPrinterStats(slug) {
             printer = await getPrinterData(slug);
-            console.log(printer.curr_status);
 
             // printer.status = "printing"
 
@@ -319,13 +318,12 @@
                 document.getElementById('detailTime').textContent = printer.time_remaining + printer.time_units;
             }
 
-            console.log(printer.last_maintenance);
             document.getElementById('lastMaintenance').textContent = printer.last_maintenance;
         }
 
-        function performAction(action) {
+        async function performAction(action) {
             disableActions(true);
-            const res = await fetch("{% url 'printers:upload_bgcode_api' %}", {
+            const res = await fetch("{% url 'printers:printer_commands_api' %}", {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken'),
