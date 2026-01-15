@@ -158,7 +158,11 @@ def individual_printer_api(request):
         payload["usage_cm3"] = usage_cm3
 
     if request.user.is_superuser:
-        payload["success_rate"] = round(float(printer_djobj.successful_prints / printer_djobj.total_print_count), 2)
+        try:
+            succ_rate = round(float(printer_djobj.successful_prints / printer_djobj.total_print_count), 2)
+        except:
+            succ_rate = ""
+        payload["success_rate"] = succ_rate
         payload["total_prints"] = printer_djobj.total_print_count
         payload["total_filament_usage_mm"] = printer_djobj.filament_usage_mm
         payload["total_filament_usage_cm3"] = printer_djobj.filament_usage_cm3
