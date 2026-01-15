@@ -7,6 +7,8 @@
       - pip
       - Django=5.2.8
       - requests
+      - gunicorn==22.0.0
+      - whitenoise==6.11.0
       - pip:
         - PrusaLinkPy==2.2.1
-        - requests
+        - python-dotenv==1.2.1
