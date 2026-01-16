@@ -20,24 +20,48 @@
             <a href="{% url 'printers:printers' %}" class="back-btn">← Back to Dashboard</a>
 
             <div class="detail-header">
-                {% if printer.model == "mk4"%}
+                <div class="detail-left">
+                    {% if printer.model == "mk4"%}
                     <div class="detail-icon" id="detailIcon"><img
                         src="{% static 'images/mk4.png' %}"/></div>
-                {% else %}
+                    {% else %}
                     <div class="detail-icon" id="detailIcon"><img
                         src="{% static 'images/coreone.png' %}"/></div>
-                {% endif %}
+                    {% endif %}
+                    <div class="detail-info">
+                        <h2 id="detailName">Status: </h2>
+                        <p id="detailModel"></p>
+                        <div class="status-badge" id="detailStatus">Unavailable</div>
+                    </div>
+                </div>
+                <div class="notes-section" id="notesSection">
+                    <h3>📝 Printer Notes</h3>
+                    <p id="printerNotes">{{ printer.staff_notes }}</p>
+                </div>
+            </div>
+
+            <div class="actions">
+                <h3>Upload Print File</h3>
+                <div class="upload-section">
+                    <form id="uploadForm" onsubmit="uploadFile(event)">
+                        <div class="form-group">
+                            <label for="fileUpload">Select .bgcode file</label>
+                            <input type="file" id="fileUpload" accept=".bgcode" required>
+                            <div class="file-info" id="fileInfo"></div>
+                        </div>
+                        <button type="submit" class="btn-submit">Upload Print</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- <div class="detail-header">
                 <div class="detail-info">
                     <h2 id="detailName">Status: </h2>
                     <p id="detailModel"></p>
                     <div class="status-badge" id="detailStatus">Unavailable</div>
                 </div>
-            </div>
+            </div> -->
 
-            <div class="notes-section" id="notesSection">
-                <h3>📝 Staff Notes</h3>
-                <p id="staffNotes">{{ printer.staff_notes }}</p>
-            </div>
 
             <div class="stats-grid">
                 <div class="stat-card">
@@ -135,20 +159,6 @@
                 </div>
             </div>
             {% endif %}
-
-            <div class="actions">
-                <h3>Upload Print File</h3>
-                <div class="upload-section">
-                    <form id="uploadForm" onsubmit="uploadFile(event)">
-                        <div class="form-group">
-                            <label for="fileUpload">Select .bgcode file</label>
-                            <input type="file" id="fileUpload" accept=".bgcode" required>
-                            <div class="file-info" id="fileInfo"></div>
-                        </div>
-                        <button type="submit" class="btn-submit">Upload Print</button>
-                    </form>
-                </div>
-            </div>
 
             {% if request.user.is_superuser %}
             <div class="actions">
