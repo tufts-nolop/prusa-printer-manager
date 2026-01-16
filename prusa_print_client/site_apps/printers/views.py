@@ -50,7 +50,7 @@ class PrintersListView(ListView):
     model = Printers
     template_name = "printer_dashboard.html"
 
-
+@ensure_csrf_cookie
 def get_printer(request, slug):
     printer = get_object_or_404(Printers.objects.filter(slug=slug))
 
@@ -98,7 +98,6 @@ def printers_status_api(request):
 
     return JsonResponse(data, safe=False)
 
-@ensure_csrf_cookie
 @require_POST
 def individual_printer_api(request):
     try:
