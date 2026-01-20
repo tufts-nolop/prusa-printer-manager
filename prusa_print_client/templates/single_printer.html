@@ -259,8 +259,6 @@
             fileInfo.style.backgroundColor = "#faedb4"
             fileInfo.textContent = 'Uploading...';
 
-            console.log("here");
-
             try {
                 const res = await fetch("{% url 'printers:upload_bgcode_api' %}", {
                     method: 'POST',
