@@ -12,4 +12,5 @@ urlpatterns = [
     path("api/printers/individual-printer/", views.individual_printer_api, name="individual_printer_api"),
     path('api/upload-bgcode/', views.upload_bgcode_api, name='upload_bgcode_api'),
     path('api/printer-commands/', views.printer_commands_api, name='printer_commands_api'),
+    path('api/printer-notes/', views.printer_notes_api, name='printer_notes_api'),
 ]
