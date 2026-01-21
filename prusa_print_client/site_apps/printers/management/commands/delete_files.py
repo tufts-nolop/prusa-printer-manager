@@ -2,8 +2,7 @@ import PrusaLinkPy
 
 from django.core.management.base import BaseCommand
 
-from printers.models import Printers
-
+from site_apps.printers.models import Printers
 
 class Command(BaseCommand):
     help = "Automatically clears the folder of 3D print files"
