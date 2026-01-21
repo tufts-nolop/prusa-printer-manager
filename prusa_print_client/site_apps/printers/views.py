@@ -68,7 +68,11 @@ def get_printer(request, slug):
 def printers_status_api(request):
     data = []
 
-    for printer in Printers.objects.all():
+    # sorting by their name e.g. p1, p2, p3, etc..
+    printer_objs = list(Printers.objects.all())
+    printer_objs.sort(key=lambda o: int(re.search(r"\d+$", o.name).group()))
+
+    for printer in printer_objs:
         status = "offline"  # default if anything goes wrong
 
         try:
