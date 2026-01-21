@@ -7,6 +7,7 @@ import PrusaLinkPy
 from django.http import HttpResponseBadRequest, JsonResponse
 from django.views.decorators.http import require_POST 
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import get_object_or_404, render
 from django.views.generic.list import ListView
 from django.forms.models import model_to_dict
@@ -142,6 +143,7 @@ def individual_printer_api(request):
     payload["curr_status"]      = curr_status
     payload["last_maintenance"] = date_string
 
+    # print(time_remaining)
     if (time_remaining / 60) > 100:
         payload["time_remaining"] = round(((time_remaining / 60) / 60), 2) # convert to hours if big
         payload["time_units"]     = " hours"
@@ -169,7 +171,7 @@ def individual_printer_api(request):
 
     return JsonResponse(payload, safe=False)
 
-
+@require_POST
 def upload_bgcode_api(request):
     uploaded_file = request.FILES.get("file")
     if uploaded_file is None:
@@ -184,8 +186,6 @@ def upload_bgcode_api(request):
     filament_g = usage.get("g")
     filament_cm3 = usage.get("cm3")
     
-
-
     # Write to a temporary file ONLY so PrusaLinkPy can read it
     suffix = Path(uploaded_file.name).suffix or ".bgcode"
     tmp_path = None
@@ -198,8 +198,7 @@ def upload_bgcode_api(request):
 
         # remote path
         remote_dir = "PRINT_QUEUE"
-        remote_name = uploaded_file.name
-        remote_path = f"{remote_dir}/{remote_name}"
+        remote_path = f"{remote_dir}/{uploaded_file.name}"
 
         # NO AUTOSTART, THEY MUST BE AT THE PRINTER
         resp = printer_actual.put_gcode(
@@ -209,16 +208,23 @@ def upload_bgcode_api(request):
             overwrite=True,
         )
 
-        if resp.status_code != 200:
-            return JsonResponse(
-                {
-                    "error": "Printer upload failed",
-                    "printer_status_code": resp.status_code,
-                    "printer_body": resp.text,
-                },
-                status=502,
-            )
-        
+        stat_code = int(resp.status_code)
+        if stat_code != 200:
+            if stat_code == 500:
+                data = {
+                    "success": False,
+                    'status': stat_code,
+                    'message': "Printer upload failed, contact staff for assistance",
+                }
+                return JsonResponse(data)
+            if stat_code == 507:
+                data = {
+                    "success": False,
+                    'status': stat_code,
+                    'message': "Failed to write to location, insert an SD card!",
+                }
+                return JsonResponse(data)
+
         if filament_mm is not None or filament_g is not None or filament_cm3 is not None:
             PendingJobUsage.objects.create(
                 printer=printer_djobj,
@@ -230,9 +236,9 @@ def upload_bgcode_api(request):
 
         return JsonResponse(
             {
-                "ok": True,
+                "success": True,
                 "filename": uploaded_file.name,
-                "remote_path": remote_path,
+                "remote_path": str(remote_path),
             }
         )
 
@@ -242,7 +248,8 @@ def upload_bgcode_api(request):
                 os.unlink(tmp_path)
             except PermissionError:
                 pass
-            
+ 
+@staff_member_required           
 def printer_commands_api(request):
     try:
         data = json.loads(request.body)
@@ -263,9 +270,9 @@ def printer_commands_api(request):
                     status=502,
                 )
 
-        if printer_action is "stop":
+        if printer_action == "stop":
             resp = stop_current_print(printer_actual)
-        elif printer_action is "resume":
+        elif printer_action == "resume":
             resp = resume_current_print(printer_actual)
         else:
             resp = pause_current_print(printer_actual)
@@ -279,3 +286,30 @@ def printer_commands_api(request):
                 },
             )
 
+@staff_member_required
+def printer_notes_api(request):           
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return HttpResponseBadRequest("Invalid JSON")
+    
+    if request.user.is_superuser:
+        printer_djobj = get_object_or_404(Printers.objects.filter(slug=data["slug"]))
+        new_note = str(data["new_note"])
+
+        printer_djobj.staff_notes = new_note
+        try:
+            printer_djobj.save()
+            return JsonResponse(
+                    {
+                        "success": "Note saved to database"
+                    },
+                    status=502,
+                )
+        except:
+            return JsonResponse(
+                    {
+                        "error": "Error saving note to database"
+                    },
+                    status=502,
+                )

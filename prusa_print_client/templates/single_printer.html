@@ -6,7 +6,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Printer Details</title>
-    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.4/dist/sweetalert2.min.css" rel="stylesheet">
     <link rel="stylesheet" media="all" href="{% static 'css/single_printer.css' %}" type="text/css">
 </head>
 
@@ -36,20 +35,24 @@
                 </div>
                 <div class="notes-section" id="notesSection">
                     <h3>📝 Printer Notes</h3>
-                    <p id="printerNotes">{{ printer.staff_notes }}</p>
+                    {% if request.user.is_superuser %}
+                        <textarea id="printerNotes" placeholder="{{ printer.staff_notes }}"></textarea>
+                    {% else %}
+                        <p id="printerNotes">{{ printer.staff_notes }}</p>
+                    {% endif %}
                 </div>
             </div>
 
             <div class="actions">
                 <h3>Upload Print File</h3>
                 <div class="upload-section">
-                    <form id="uploadForm" onsubmit="uploadFile(event)">
+                    <form id="uploadForm">
                         <div class="form-group">
                             <label for="fileUpload">Select .bgcode file</label>
                             <input type="file" id="fileUpload" accept=".bgcode" required>
                             <div class="file-info" id="fileInfo"></div>
                         </div>
-                        <button type="submit" class="btn-submit">Upload Print</button>
+                        <button type="button" id="uploadGcode" class="btn-submit">Upload Print</button>
                     </form>
                 </div>
             </div>
@@ -199,7 +202,6 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.4/dist/sweetalert2.all.min.js"></script>
     <script>
         function isBgcodeFile(file) {
             if (!file) return false;
@@ -233,13 +235,19 @@
             const file = fileInput.files[0];
 
             if (!fileInput.files.length) {
+                fileInfo.style.color = "#ed4337"
+                fileInfo.style.backgroundColor = "#f79e9e"
                 fileInfo.textContent = "Please choose a file first";
+                disableUploadForm(false);
                 return;
             }
 
             if (!isBgcodeFile(file)) {
+                fileInfo.style.color = "#ed4337"
+                fileInfo.style.backgroundColor = "#f79e9e"
                 fileInfo.textContent = "File must be a .bgcode file";
                 fileInput.value = "";
+                disableUploadForm(false);
                 return;
             }
 
@@ -247,17 +255,19 @@
             formData.append('file', file);
             formData.append('slug', "{{ printer.slug }}"); 
 
+            fileInfo.style.color = "#e6ca4e"
+            fileInfo.style.backgroundColor = "#faedb4"
             fileInfo.textContent = 'Uploading...';
 
             try {
                 const res = await fetch("{% url 'printers:upload_bgcode_api' %}", {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                },
-                body: formData,
-                credentials: 'same-origin',
-                });
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: formData,
+                    credentials: 'same-origin',
+                    });
 
                 if (!res.ok) {
                     const text = await res.text();
@@ -266,21 +276,27 @@
                 }
 
                 const data = await res.json();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'File uploaded',
-                    text: `File "${data.filename || file.name}" was uploaded and queued.`,
-                });
-                fileInput.value = '';
-                fileInfo.textContent = '';
-                disableUploadForm(false);
-            } catch (err) {
-                console.error(err);
-                fileInfo.textContent = 'Error uploading file.';
-                Swal.fire({ icon: 'error', title: 'Upload failed', text: err.message });
-                disableUploadForm(false);
+                if (data.success) {
+                    fileInput.value = '';
+                    fileInfo.style.color = "#2e7d32"
+                    fileInfo.style.backgroundColor = "#e8f5e9"
+                    fileInfo.textContent = `Upload success! File sent to ${remote_path}`;
+                    disableUploadForm(false);
+                } else {
+                    fileInput.value = '';
+                    fileInfo.style.color = "#ed4337"
+                    fileInfo.style.backgroundColor = "#f79e9e"
+                    fileInfo.textContent = `Error ${err.status}: ${err.message}`;
+                    disableUploadForm(false);
                 }
+
+            } catch (err) {
+                fileInfo.style.color = "#ed4337"
+                fileInfo.style.backgroundColor = "#f79e9e"
+                fileInfo.textContent = `Error ${err.status}: ${err.message}`;
+                disableUploadForm(false);
             }
+        }
 
         async function getPrinterData(slug) {
             const csrftoken = getCookie('csrftoken');
@@ -307,8 +323,6 @@
 
         async function displayPrinterStats(slug) {
             printer = await getPrinterData(slug);
-
-            // printer.status = "printing"
 
             const statusBadge = document.getElementById('detailStatus');
             statusBadge.textContent = printer.curr_status.charAt(0).toUpperCase() + printer.curr_status.slice(1);
@@ -344,6 +358,7 @@
             disableActions(false);
         }
 
+
         function submitReport(event) {
             event.preventDefault();
             const issueType = document.getElementById('issueType').value;
@@ -358,39 +373,88 @@
             document.getElementById('reportForm').reset();
         }
 
-        function disableActions(disabled) {
-            const buttons = document.querySelectorAll('.action-btn');
-            buttons.forEach(btn => {
-                btn.disabled = disabled;
-            });
-            
-            if (disabled) {
-                document.getElementById('loadingOverlay').classList.add('active');
-            } else {
-                document.getElementById('loadingOverlay').classList.remove('active');
-            }
-        }
-
         function disableUploadForm(disabled) {
             const fileInput = document.getElementById('fileUpload');
             const submitBtn = document.querySelector('#uploadForm .btn-submit');
-            
+            const overlay = document.getElementById('loadingOverlay');
+
             fileInput.disabled = disabled;
             submitBtn.disabled = disabled;
-            
-            if (disabled) {
-                document.getElementById('loadingOverlay').classList.add('active');
-            } else {
-                document.getElementById('loadingOverlay').classList.remove('active');
+
+            if (overlay) {
+                overlay.classList.toggle('active', disabled);
             }
         }
 
+        function disableActions(disabled) {
+            const buttons = document.querySelectorAll('.action-btn');
+            const overlay = document.getElementById('loadingOverlay');
+
+            buttons.forEach(btn => btn.disabled = disabled);
+
+            if (overlay) {
+                overlay.classList.toggle('active', disabled);
+            }
+        }
+
+
+        document.getElementById("uploadGcode").addEventListener("click", uploadFile);
+
         // Load printer data when page loads
-        // loadPrinterData();
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('fileUpload');
+            const fileInfo = document.getElementById('fileInfo');
+            
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    fileInfo.textContent = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                    fileInfo.classList.add('show');
+                } else {
+                    fileInfo.classList.remove('show');
+                }
+            });
+        });
+
         const printer_slug = '{{ printer.slug }}';
         displayPrinterStats(printer_slug);
         setInterval(function() { displayPrinterStats(printer_slug); }, 1000);
     </script>
+
+    {% if request.user.is_superuser %}
+    <script>
+        async function saveNotesOnBlur() {
+            const notesTextarea = document.getElementById('printerNotes');
+            const newNotes = notesTextarea.value;
+
+            const res = await fetch("{% url 'printers:printer_notes_api' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: JSON.stringify({ new_note: newNotes, slug: '{{ printer.slug }}'}),
+                credentials: 'same-origin',
+            });
+        }
+
+        function autoResizeTextarea(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const notesTextarea = document.getElementById('printerNotes');
+            
+            notesTextarea.addEventListener('input', function() {
+                autoResizeTextarea(this);
+            });
+
+            notesTextarea.addEventListener('blur', function() {
+                saveNotesOnBlur();
+            });
+        });
+    </script>
+    {% endif %}
 </body>
 
 </html>
