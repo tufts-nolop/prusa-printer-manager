@@ -182,7 +182,6 @@ def upload_bgcode_api(request):
     printer_actual = PrusaLinkPy.PrusaLinkPy(str(printer_djobj.host), str(printer_djobj.api_key))
     
     usage = get_filament_usage_from_file(uploaded_file)
-    uploaded_file.seek(0)
     filament_mm = usage.get("mm")
     filament_g = usage.get("g")
     filament_cm3 = usage.get("cm3")
