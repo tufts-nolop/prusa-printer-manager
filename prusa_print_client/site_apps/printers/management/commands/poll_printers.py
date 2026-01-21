@@ -5,8 +5,8 @@ from django.core.management.base import BaseCommand
 from django.db.models import F
 from django.db import transaction
 
-from printers.models import Printers
-from printers.utils import *
+from site_apps.printers.models import Printers
+from site_apps.printers.utils import *
 
 
 class Command(BaseCommand):
@@ -34,7 +34,7 @@ class Command(BaseCommand):
                 if raw_state is not None:
                     status = map_printer_status(raw_state)
             
-                if status is "printing" and job_id != (printer.last_job_id or ""):
+                if status == "printing" and job_id != (printer.last_job_id or ""):
                     Printers.objects.filter(slug=printer.slug).update(
                         total_print_count=F("total_print_count") + 1,
                         last_job_id=job_id
