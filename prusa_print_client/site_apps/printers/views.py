@@ -218,7 +218,6 @@ def upload_bgcode_api(request):
                 }
                 return JsonResponse(data)
             if stat_code == 507:
-                print("im in here now bruh")
                 data = {
                     "success": False,
                     'status': stat_code,
