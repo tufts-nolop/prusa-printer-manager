@@ -276,7 +276,8 @@
                 }
 
                 const data = await res.json();
-                if (data.success) {
+                console.log(data);
+                if (data.success == true) {
                     fileInput.value = '';
                     fileInfo.style.color = "#2e7d32"
                     fileInfo.style.backgroundColor = "#e8f5e9"
@@ -286,14 +287,14 @@
                     fileInput.value = '';
                     fileInfo.style.color = "#ed4337"
                     fileInfo.style.backgroundColor = "#f79e9e"
-                    fileInfo.textContent = `Error ${err.status}: ${err.message}`;
+                    fileInfo.textContent = `Error ${data.status}: ${data.message}`;
                     disableUploadForm(false);
                 }
 
             } catch (err) {
                 fileInfo.style.color = "#ed4337"
                 fileInfo.style.backgroundColor = "#f79e9e"
-                fileInfo.textContent = `Error ${err.status}: ${err.message}`;
+                fileInfo.textContent = `Other err ${err.status}: ${err.message}`;
                 disableUploadForm(false);
             }
         }

@@ -51,6 +51,20 @@ class PrintersListView(ListView):
     model = Printers
     template_name = "printer_dashboard.html"
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        objs = list(qs)
+
+        # used for sorting printers from p1, p2, p3, etc. bc i entered them in the db at different times
+        def sort_key(o):
+            name = (o.name or "").strip()
+            m = re.search(r"(\d+)$", name)
+            num = int(m.group(1)) if m else 10**9  # non-matching go last
+            return (num, name.lower())
+
+        objs.sort(key=sort_key)
+        return objs
+
 @ensure_csrf_cookie
 def get_printer(request, slug):
     printer = get_object_or_404(Printers.objects.filter(slug=slug))
@@ -68,9 +82,7 @@ def get_printer(request, slug):
 def printers_status_api(request):
     data = []
 
-    # sorting by their name e.g. p1, p2, p3, etc..
-    printer_objs = list(Printers.objects.all())
-    printer_objs.sort(key=lambda o: int(re.search(r"\d+$", o.name).group()))
+    printer_objs = Printers.objects.all()
 
     for printer in printer_objs:
         status = "offline"  # default if anything goes wrong
@@ -213,6 +225,7 @@ def upload_bgcode_api(request):
         )
 
         stat_code = int(resp.status_code)
+        # print(resp.__dict__)
         if stat_code != 200:
             if stat_code == 500:
                 data = {
