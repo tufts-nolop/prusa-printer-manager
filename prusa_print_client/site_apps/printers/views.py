@@ -161,10 +161,10 @@ def individual_printer_api(request):
 
     # print(time_remaining)
     if (time_remaining / 60) > 100:
-        payload["time_remaining"] = round(((time_remaining / 60) / 60), 2) # convert to hours if big
+        payload["time_remaining"] = round(((time_remaining / 60) / 60)) # convert to hours if big
         payload["time_units"]     = " hours"
     else:
-        payload["time_remaining"] = (round(time_remaining / 60), 2) # convert to min
+        payload["time_remaining"] = (round(time_remaining / 60)) # convert to min
         payload["time_units"]     = " minutes"    
         
     if usage_mm:
