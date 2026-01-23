@@ -44,12 +44,47 @@ def stop_current_print(client):
     except requests.RequestException as e:
         print("Error stopping print:", e) # TODO: change this as well
 
+def file_exists_on_printer(printer, remote_dir, filename) -> bool:
+    # PrusaLinkPy expects paths like "/PRINT_QUEUE"
+    remote_dir = "/" + remote_dir.strip("/")
+
+    # get_recursive_files returns: {folder_name: {display_name: internal_path, ...}, ...}
+    files = printer.get_recursive_files(remote_dir)
+
+    # flatten all "names" we can find
+    names = set()
+
+    if isinstance(files, dict):
+        for k, v in files.items():
+            # Case 1: { "FOLDER": { "file.bgcode": "/path/file.bgcode" } }
+            if isinstance(v, dict):
+                names.update(v.keys())
+            # Case 2: { "file.bgcode": "/path/file.bgcode" }
+            elif isinstance(v, str):
+                # key might be the display name
+                names.add(k)
+
+    return filename in names
 
 ########## Django views ##########
 
 class PrintersListView(ListView):
     model = Printers
     template_name = "printer_dashboard.html"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        objs = list(qs)
+
+        # used for sorting printers from p1, p2, p3, etc. bc i entered them in the db at different times
+        def sort_key(o):
+            name = (o.name or "").strip()
+            m = re.search(r"(\d+)$", name)
+            num = int(m.group(1)) if m else 10**9  # non-matching go last
+            return (num, name.lower())
+
+        objs.sort(key=sort_key)
+        return objs
 
 @ensure_csrf_cookie
 def get_printer(request, slug):
@@ -68,9 +103,7 @@ def get_printer(request, slug):
 def printers_status_api(request):
     data = []
 
-    # sorting by their name e.g. p1, p2, p3, etc..
-    printer_objs = list(Printers.objects.all())
-    printer_objs.sort(key=lambda o: int(re.search(r"\d+$", o.name).group()))
+    printer_objs = Printers.objects.all()
 
     for printer in printer_objs:
         status = "offline"  # default if anything goes wrong
@@ -149,10 +182,10 @@ def individual_printer_api(request):
 
     # print(time_remaining)
     if (time_remaining / 60) > 100:
-        payload["time_remaining"] = round(((time_remaining / 60) / 60), 2) # convert to hours if big
+        payload["time_remaining"] = round(((time_remaining / 60) / 60)) # convert to hours if big
         payload["time_units"]     = " hours"
     else:
-        payload["time_remaining"] = (round(time_remaining / 60), 2) # convert to min
+        payload["time_remaining"] = (round(time_remaining / 60)) # convert to min
         payload["time_units"]     = " minutes"    
         
     if usage_mm:
@@ -204,6 +237,14 @@ def upload_bgcode_api(request):
         remote_dir = "PRINT_QUEUE"
         remote_path = f"{remote_dir}/{uploaded_file.name}"
 
+        if (file_exists_on_printer(printer_actual, remote_dir, uploaded_file.name)):
+            data = {
+                "success": False,
+                'status': 500,
+                'message': f"The file already exists at {remote_path}",
+            }
+            return JsonResponse(data)
+
         # NO AUTOSTART, THEY MUST BE AT THE PRINTER
         resp = printer_actual.put_gcode(
             tmp_path,
@@ -241,7 +282,6 @@ def upload_bgcode_api(request):
         return JsonResponse(
             {
                 "success": True,
-                "filename": uploaded_file.name,
                 "remote_path": str(remote_path),
             }
         )
