@@ -269,19 +269,12 @@
                     credentials: 'same-origin',
                     });
 
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(`Upload failed: ${res.status} ${text}`);
-                    disableUploadForm(false);
-                }
-
                 const data = await res.json();
-                console.log(data);
-                if (data.success == true) {
+                if (res.ok == true && data.success == true) {
                     fileInput.value = '';
                     fileInfo.style.color = "#2e7d32"
                     fileInfo.style.backgroundColor = "#e8f5e9"
-                    fileInfo.textContent = `Upload success! File sent to ${remote_path}`;
+                    fileInfo.textContent = `Upload success! File sent to ${data.remote_path ?? '(unknown path)'}`;
                     disableUploadForm(false);
                 } else {
                     fileInput.value = '';
