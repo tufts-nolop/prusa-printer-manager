@@ -30,12 +30,14 @@ def pause_current_print(client):
     except requests.RequestException as e:
         print("Error pausing print:", e) # TODO: change this
 
+
 def resume_current_print(client):
     try:
         resp = client.resume_print(client)
         return resp
     except requests.RequestException as e:
         print("Error resuming print:", e) # TODO: change this too 
+
 
 def stop_current_print(client):
     try:
@@ -44,27 +46,27 @@ def stop_current_print(client):
     except requests.RequestException as e:
         print("Error stopping print:", e) # TODO: change this as well
 
-def file_exists_on_printer(printer, remote_dir, filename) -> bool:
-    # PrusaLinkPy expects paths like "/PRINT_QUEUE"
-    remote_dir = "/" + remote_dir.strip("/")
 
-    # get_recursive_files returns: {folder_name: {display_name: internal_path, ...}, ...}
-    files = printer.get_recursive_files(remote_dir)
+def remote_file_exists_usb(client, remote_path: str) -> bool:
+    host = getattr(client, "host", None) or getattr(client, "_host", None)
+    api_key = getattr(client, "api_key", None) or getattr(client, "_api_key", None)
+    if not host or not api_key:
+        raise ValueError("Couldn't read host/api_key off PrusaLinkPy client")
 
-    # flatten all "names" we can find
-    names = set()
+    rp = (remote_path or "").strip().strip("/")  # "PRINT_QUEUE/3DBenchy.bgcode"
+    url = f"http://{host}/api/v1/files/usb/{rp}"
 
-    if isinstance(files, dict):
-        for k, v in files.items():
-            # Case 1: { "FOLDER": { "file.bgcode": "/path/file.bgcode" } }
-            if isinstance(v, dict):
-                names.update(v.keys())
-            # Case 2: { "file.bgcode": "/path/file.bgcode" }
-            elif isinstance(v, str):
-                # key might be the display name
-                names.add(k)
+    r = requests.get(url, headers={"X-Api-Key": api_key, "Accept": "application/json"}, timeout=10)
 
-    return filename in names
+    if r.status_code == 200:
+        return True
+    if r.status_code == 404:
+        return False
+
+    # anything else is useful to see (403, 401, 500)
+    print("exists check failed:", r.status_code, r.text[:200])
+    return False
+
 
 ########## Django views ##########
 
@@ -237,10 +239,10 @@ def upload_bgcode_api(request):
         remote_dir = "PRINT_QUEUE"
         remote_path = f"{remote_dir}/{uploaded_file.name}"
 
-        if (file_exists_on_printer(printer_actual, remote_dir, uploaded_file.name)):
+        if (remote_file_exists_usb(printer_actual, remote_path)):
             data = {
                 "success": False,
-                'status': 500,
+                'status': 404,
                 'message': f"The file already exists at {remote_path}",
             }
             return JsonResponse(data)
@@ -266,7 +268,7 @@ def upload_bgcode_api(request):
                 data = {
                     "success": False,
                     'status': stat_code,
-                    'message': "Failed to write to location, insert an SD card!",
+                    'message': "Failed to write to location, check for inserted USB drive or swap it for a different one",
                 }
                 return JsonResponse(data)
 
