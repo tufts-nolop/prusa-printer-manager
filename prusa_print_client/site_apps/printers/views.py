@@ -248,12 +248,22 @@ def upload_bgcode_api(request):
             return JsonResponse(data)
 
         # NO AUTOSTART, THEY MUST BE AT THE PRINTER
-        resp = printer_actual.put_gcode(
-            tmp_path,
-            remote_path,
-            printAfterUpload=False,
-            overwrite=True,
-        )
+        if request.user.is_superuser:
+            resp = printer_actual.put_gcode(
+                tmp_path,
+                remote_path,
+                printAfterUpload=True,
+                overwrite=True,
+            )
+        else:
+            resp = printer_actual.put_gcode(
+                tmp_path,
+                remote_path,
+                printAfterUpload=False,
+                overwrite=True,
+            )
+
+
 
         stat_code = int(resp.status_code)
         if stat_code != 200:
