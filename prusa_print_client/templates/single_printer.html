@@ -44,6 +44,20 @@
             </div>
 
             <div class="actions">
+                <h3>Upload 3D Model</h3>
+                <div class="model-upload-section">
+                    <form id="modelUploadForm" onsubmit="uploadModel(event)">
+                        <div class="form-group">
+                            <label for="modelUpload">Select 3D model file (.stl, .obj, .3mf)</label>
+                            <input type="file" id="modelUpload" accept=".stl,.obj,.3mf" required>
+                            <div class="file-info" id="modelFileInfo"></div>
+                        </div>
+                        <button type="submit" class="btn-submit">Upload Model for Slicing</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="actions">
                 <h3>Upload Print File</h3>
                 <div class="upload-section">
                     <form id="uploadForm">
@@ -52,7 +66,7 @@
                             <input type="file" id="fileUpload" accept=".bgcode" required>
                             <div class="file-info" id="fileInfo"></div>
                         </div>
-                        <button type="button" id="uploadGcode" class="btn-submit">Upload Print</button>
+                        <button type="button" id="uploadGcode" class="btn-submit">Upload and Queue Print</button>
                     </form>
                 </div>
             </div>

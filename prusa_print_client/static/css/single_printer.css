@@ -375,10 +375,71 @@ h1 {
 }
 
 .upload-section {
-    background: #f8f9fa;
+    background: #faf5ff;
+    border: 1px solid #e9d5ff;
     padding: 25px;
     border-radius: 10px;
     margin-bottom: 30px;
+}
+
+.upload-section h3 {
+    color: #6b21a8;
+}
+
+.upload-section .form-group label {
+    color: #334155;
+}
+
+.upload-section input[type="file"] {
+    border: 2px dashed #d8b4fe;
+    background: white;
+}
+
+.upload-section input[type="file"]:hover {
+    border-color: #c084fc;
+    background: #fdfcfe;
+}
+
+.upload-section .btn-submit {
+    background: #667eea;
+}
+
+.upload-section .btn-submit:hover {
+    background: #5568d3;
+}
+
+.model-upload-section {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    padding: 25px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.model-upload-section h3 {
+    color: #0c4a6e;
+}
+
+.model-upload-section .form-group label {
+    color: #334155;
+}
+
+.model-upload-section input[type="file"] {
+    border: 2px dashed #7dd3fc;
+    background: white;
+}
+
+.model-upload-section input[type="file"]:hover {
+    border-color: #38bdf8;
+    background: #fafcfe;
+}
+
+.model-upload-section .btn-submit {
+    background: #0ea5e9;
+}
+
+.model-upload-section .btn-submit:hover {
+    background: #0284c7;
 }
 
 .form-group input[type="file"] {
