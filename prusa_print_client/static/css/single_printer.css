@@ -459,3 +459,34 @@ h1 {
         transform: rotate(360deg);
     }
 }
+
+.footer-bug-report {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 100;
+}
+
+.bug-report-btn {
+    background: rgba(255, 255, 255, 0.9);
+    color: #6b7280;
+    padding: 10px 18px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bug-report-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    color: #374151;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
