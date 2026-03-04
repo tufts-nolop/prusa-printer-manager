@@ -26,7 +26,7 @@ Project directory (repo root; contains `manage.py`):
 
 Conda used by the services:
 
-- Conda executable: `/home/nolop/miniconda3/condabin/conda`
+- Conda executable: `/home/nolop/miniconda3/bin/conda`
 - Conda env: `nolop-printers`
 
 
