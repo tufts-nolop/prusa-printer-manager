@@ -27,16 +27,18 @@ def pause_current_print(client):
     try:
         resp = client.pause_print()
         return resp
+    # TODO: add proper err handling
     except requests.RequestException as e:
-        print("Error pausing print:", e) # TODO: change this
+        print("Error pausing print:", e)
 
 
 def resume_current_print(client):
     try:
-        resp = client.resume_print(client)
+        resp = client.resume_print()
         return resp
+    # TODO: add proper err handling here too
     except requests.RequestException as e:
-        print("Error resuming print:", e) # TODO: change this too 
+        print("Error resuming print:", e)
 
 
 def stop_current_print(client):

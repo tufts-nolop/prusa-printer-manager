@@ -256,7 +256,7 @@
             formData.append('slug', "{{ printer.slug }}"); 
 
             fileInfo.style.color = "#e6ca4e"
-            fileInfo.style.backgroundColor = "#faedb4"
+            fileInfo.style.backgroundColor = "#fcf5d4"
             fileInfo.textContent = 'Uploading...';
 
             try {
@@ -279,14 +279,14 @@
                 } else {
                     fileInput.value = '';
                     fileInfo.style.color = "#ed4337"
-                    fileInfo.style.backgroundColor = "#f79e9e"
+                    fileInfo.style.backgroundColor = "#fad2d2"
                     fileInfo.textContent = `Error ${data.status}: ${data.message}`;
                     disableUploadForm(false);
                 }
 
             } catch (err) {
                 fileInfo.style.color = "#ed4337"
-                fileInfo.style.backgroundColor = "#f79e9e"
+                fileInfo.style.backgroundColor = "#fad2d2"
                 fileInfo.textContent = `Other err ${err.status}: ${err.message}`;
                 disableUploadForm(false);
             }
