@@ -168,6 +168,7 @@ def individual_printer_api(request):
 
    # bc there could be a good ststus code but no active job on the printer
    # jankass solution but it works so whatever
+    filament_usage = None
     if job_resp.status_code == 204 or not job_resp.content.strip():
         job_info = None
     else:
@@ -204,11 +205,11 @@ def individual_printer_api(request):
         payload["time_remaining"] = (round(time_remaining / 60)) # convert to min
         payload["time_units"]     = " minutes"    
         
-    if filament_usage[0] is not None:
+    if filament_usage is not None:
         payload["usage_mm"] = filament_usage[0]
-    if filament_usage[1] is not None:
+    if filament_usage is not None:
         payload["usage_g"] = filament_usage[1]
-    if filament_usage[2] is not None:
+    if filament_usage is not None:
         payload["usage_cm3"] = filament_usage[2]
 
     print(filament_usage)
