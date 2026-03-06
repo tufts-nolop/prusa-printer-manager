@@ -164,7 +164,7 @@ def get_filament_usage_from_running_job(printer, printer_info, job_info):
     state = map_printer_status(printer_info["state"])
 
     if state in ("finished", "stopped"):
-        return None, None, None, None
+        return None, None, None
 
     file_info = job_info.get("file") or {}
     file_name = file_info.get("display_name") or {}
@@ -172,7 +172,7 @@ def get_filament_usage_from_running_job(printer, printer_info, job_info):
 
     # print(download_path)
     if not download_path:
-        return None, None, None, None
+        return None, None, None
     
     pending = PendingJobUsage.objects.filter(
         printer=printer,
@@ -183,7 +183,7 @@ def get_filament_usage_from_running_job(printer, printer_info, job_info):
     # - never uploaded this via our app, or
     # - already processed it
     if not pending:
-        return None, None, None, None
+        return None, None, None
 
     used_mm = pending.filament_mm
     used_g = pending.filament_g
