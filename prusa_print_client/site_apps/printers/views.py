@@ -150,7 +150,8 @@ def individual_printer_api(request):
     printer_djobj = get_object_or_404(Printers.objects.filter(slug=data["slug"]))
     printer_actual = PrusaLinkPy.PrusaLinkPy(str(printer_djobj.host), str(printer_djobj.api_key))
     try:
-        resp = printer_actual.get_status()
+        status_resp = printer_actual.get_status()
+        job_resp = printer_actual.get_job()
     except:
         return JsonResponse(
                 {
@@ -160,21 +161,35 @@ def individual_printer_api(request):
             )
 
     # resp = printer_actual.get_status()
-    status = resp.json()
+    status = status_resp.json()
 
     printer_info = status.get("printer", {})
-    job_info     = status.get("job", {})
+    more_job_info     = status.get("job", {})
+
+   # bc there could be a good ststus code but no active job on the printer
+   # jankass solution but it works so whatever
+    usage_mm = None
+    usage_g = None
+    usage_cm3 = None
+    if job_resp.status_code == 204 or not job_resp.content.strip():
+        job_info = None
+    else:
+        job_resp.raise_for_status()  # will only raise on 4xx/5xx
+        job_info = job_resp.json()
+        usage_mm, usage_g, usage_cm3 = get_filament_usage_from_running_job(printer_djobj, printer_info, job_info)
+    # resp.raise_for_status()
+    
 
     dt = printer_djobj.last_maintenance
     dt = timezone.localtime(dt)  # optional: convert to local time?
 
     nozzle_temp    = printer_info.get("temp_nozzle", 0)        # °C
     bed_temp       = printer_info.get("temp_bed", 0)           # °C
-    progress       = job_info.get("progress", 0)               # percent (0–100)
-    time_remaining = job_info.get("time_remaining", 0)        # seconds
+    progress       = more_job_info.get("progress", 0)               # percent (0–100)
+    time_remaining = more_job_info.get("time_remaining", 0)        # seconds
     curr_status    = map_printer_status(printer_info["state"])
     date_string    = date_format(dt, "Y-m-d")
-    usage_mm, usage_g, usage_cm3, _ = get_filament_usage_from_job(printer_djobj, job_info)
+
     
 
     payload = model_to_dict(printer_djobj)
@@ -192,11 +207,11 @@ def individual_printer_api(request):
         payload["time_remaining"] = (round(time_remaining / 60)) # convert to min
         payload["time_units"]     = " minutes"    
         
-    if usage_mm:
+    if usage_mm is not None:
         payload["usage_mm"] = usage_mm
-    if usage_g:
+    if usage_g is not None:
         payload["usage_g"] = usage_g
-    if usage_cm3:
+    if usage_cm3 is not None:
         payload["usage_cm3"] = usage_cm3
 
     if request.user.is_superuser:
@@ -284,6 +299,9 @@ def upload_bgcode_api(request):
                 }
                 return JsonResponse(data)
 
+        print(filament_mm)
+        print(filament_g)
+        print(filament_cm3)
         if filament_mm is not None or filament_g is not None or filament_cm3 is not None:
             PendingJobUsage.objects.create(
                 printer=printer_djobj,
