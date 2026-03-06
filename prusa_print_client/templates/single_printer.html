@@ -44,6 +44,20 @@
             </div>
 
             <div class="actions">
+                <h3>Upload 3D Model</h3>
+                <div class="model-upload-section">
+                    <form id="modelUploadForm" onsubmit="uploadModel(event)">
+                        <div class="form-group">
+                            <label for="modelUpload">Select 3D model file (.stl, .obj, .3mf)</label>
+                            <input type="file" id="modelUpload" accept=".stl,.obj,.3mf" required>
+                            <div class="file-info" id="modelFileInfo"></div>
+                        </div>
+                        <button type="submit" class="btn-submit">Upload Model for Slicing</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="actions">
                 <h3>Upload Print File</h3>
                 <div class="upload-section">
                     <form id="uploadForm">
@@ -52,7 +66,7 @@
                             <input type="file" id="fileUpload" accept=".bgcode" required>
                             <div class="file-info" id="fileInfo"></div>
                         </div>
-                        <button type="button" id="uploadGcode" class="btn-submit">Upload Print</button>
+                        <button type="button" id="uploadGcode" class="btn-submit">Upload and Queue Print</button>
                     </form>
                 </div>
             </div>
@@ -100,32 +114,20 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-label">Exact extruded length</div>
-                    <div class="stat-value">
-                        {% if usage_mm %}
-                            {{ usage_mm }}
-                        {% else %}
+                    <div class="stat-value" id="usage-mm-display">
                             --mm
-                        {% endif %}
                     </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Printed plastic volume</div>
-                    <div class="stat-value">
-                        {% if usage_cm3 %}
-                            {{ usage_cm3 }}
-                        {% else %}
+                    <div class="stat-value" id="usage-cm3-display">
                             --cm³
-                        {% endif %}
                     </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Raw material consumption (mass)</div>
-                    <div class="stat-value">
-                        {% if usage_g %}
-                            {{ usage_g }}
-                        {% else %}
+                    <div class="stat-value" id="usage-g-display">
                             --g
-                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -154,7 +156,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Total printed plastic volume</div>
-                    <div class="stat-value">{{ total_filament_usage_cm3 }}</div>
+                    <div class="stat-value">{{ total_filament_usage_cm3 }} cm</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Total filament mass used</div>
@@ -321,7 +323,7 @@
             return res.json();
         }
 
-        async function displayPrinterStats(slug) {
+        async function updatePrinterUI(slug) {
             printer = await getPrinterData(slug);
 
             const statusBadge = document.getElementById('detailStatus');
@@ -340,6 +342,44 @@
                 document.getElementById('detailProgress').textContent = `${printer.progress}%`;
                 document.getElementById('progressBar').style.width = `${printer.progress}%`;
                 document.getElementById('detailTime').textContent = printer.time_remaining + printer.time_units;
+            }
+
+            const mm  = printer.usage_mm;
+            const cm3 = printer.usage_cm3;
+            const g   = printer.usage_g;
+
+            const mmEl  = document.getElementById("usage-mm-display");
+            const cm3El = document.getElementById("usage-cm3-display");
+            const gEl   = document.getElementById("usage-g-display");
+
+            if (mm !== undefined && mm !== null) {
+                if (mm > 1000) {
+                    mmEl.textContent = `${(mm / 1000).toFixed(2)} m`;
+                } else {
+                    mmEl.textContent = `${mm} mm`;
+                }
+            } else {
+                mmEl.textContent = "--mm";
+            }
+
+            if (cm3 !== undefined && cm3 !== null) {
+                if (cm3 > 1000) {
+                    cm3El.textContent = `${(cm3 / 1e+6).toFixed(2)} m³`
+                } else {
+                    cm3El.textContent = `${cm3} cm³`;
+                }
+            } else {
+                cm3El.textContent = "--cm³";
+            }
+
+            if (g !== undefined && g !== null) {
+                if (g > 1000) {
+                    gEl.textContent = `${(g / 1000).toFixed(2)} kg`;
+                } else {
+                    gEl.textContent = `${g} g`;
+                }
+            } else {
+                gEl.textContent = "--g";
             }
 
             document.getElementById('lastMaintenance').textContent = printer.last_maintenance;
@@ -417,8 +457,8 @@
         });
 
         const printer_slug = '{{ printer.slug }}';
-        displayPrinterStats(printer_slug);
-        setInterval(function() { displayPrinterStats(printer_slug); }, 1000);
+        updatePrinterUI(printer_slug);
+        setInterval(function() { updatePrinterUI(printer_slug); }, 1000);
     </script>
 
     {% if request.user.is_superuser %}

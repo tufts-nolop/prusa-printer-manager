@@ -64,5 +64,9 @@ class PendingJobUsage(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name_plural = "Pending Jobs' Usage"
+
     def __str__(self):
         return f"{self.printer.slug} :: {self.remote_path}"
+    

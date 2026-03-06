@@ -1,3 +1,5 @@
+from .models import PendingJobUsage
+
 # used gpt to map the status flags
 def map_printer_status(state: str) -> str:
     """
@@ -54,28 +56,32 @@ def get_filament_usage_from_file(file_obj) -> dict:
       }
     """
     
-    FILAMENT_RE = re.compile(r";\s*filament used \[([^\]]+)\]\s*=\s*([0-9.+-eE]+)")
+    filament_re = re.compile(
+        r"filament used \[([^\]]+)\]\s*=\s*([0-9.+-eE]+)",
+        re.IGNORECASE,
+    )
     usage = {}
 
-    # reading only the first 100 lines to avoid slurping the whole file
+    # reading only the first 25 lines to avoid slurping the whole file
     for _ in range(100):
         line = file_obj.readline()
         if not line:
-            break  # EOF
+            break
 
-        try:
-            line_str = line.decode("utf-8", errors="ignore")
-        except AttributeError:
-            # already str
-            line_str = line
+        if isinstance(line, bytes):
+            line_str = line.decode("utf-8", errors="ignore").strip()
+        else:
+            line_str = line.strip()
 
-        m = FILAMENT_RE.match(line_str.strip())
+        # print(line_str)  # cleaner debug output
+
+        m = filament_re.search(line_str)
         if m:
-            unit = m.group(1).strip()   # e.g. "mm", "g", "cm3"
+            unit = m.group(1).strip()   # mm, g, cm3
             value = float(m.group(2))
             usage[unit] = value
+            continue
 
-    # rewind so later code can re-read the file if needed
     try:
         file_obj.seek(0)
     except Exception:
@@ -117,8 +123,6 @@ def get_filament_usage_from_job(printer, job_data):
         well as commands with the OG use being the latter
     """
     
-    from .models import PendingJobUsage
-    
     
     job = job_data.get("job") or {}
     state = (job.get("state") or "").upper()
@@ -131,6 +135,8 @@ def get_filament_usage_from_job(printer, job_data):
     download_path = refs.get("download")
     if not download_path:
         return None, None, None, None
+    
+    
 
     pending = PendingJobUsage.objects.filter(
         printer=printer,
@@ -153,3 +159,34 @@ def get_filament_usage_from_job(printer, job_data):
         
     return used_mm, used_g, used_cm3, pending
 
+def get_filament_usage_from_running_job(printer, printer_info, job_info):
+    
+    state = map_printer_status(printer_info["state"])
+
+    if state in ("finished", "stopped"):
+        return None, None, None, None
+
+    file_info = job_info.get("file") or {}
+    file_name = file_info.get("display_name") or {}
+    download_path =  f"PRINT_QUEUE/{file_name}"
+
+    # print(download_path)
+    if not download_path:
+        return None, None, None, None
+    
+    pending = PendingJobUsage.objects.filter(
+        printer=printer,
+        remote_path=download_path,
+    ).first()
+
+    # if theres no pending record, we either:
+    # - never uploaded this via our app, or
+    # - already processed it
+    if not pending:
+        return None, None, None, None
+
+    used_mm = pending.filament_mm
+    used_g = pending.filament_g
+    used_cm3 = pending.filament_cm3
+        
+    return used_mm, used_g, used_cm3
