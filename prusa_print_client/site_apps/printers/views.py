@@ -212,8 +212,6 @@ def individual_printer_api(request):
     if filament_usage is not None:
         payload["usage_cm3"] = filament_usage[2]
 
-    print(filament_usage)
-
     if request.user.is_superuser:
         try:
             succ_rate = round(float(printer_djobj.successful_prints / printer_djobj.total_print_count), 2)
