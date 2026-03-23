@@ -5,14 +5,14 @@ import tempfile
 import PrusaLinkPy
 
 from django.http import HttpResponseBadRequest, JsonResponse
+from django.core.files.storage import FileSystemStorage
+from django.views.generic.list import ListView
+from django.core.files.base import ContentFile
 from django.views.decorators.http import require_POST 
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import get_object_or_404, render
-from django.views.generic.list import ListView
 from django.forms.models import model_to_dict
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 from django.utils.formats import date_format
 from django.utils import timezone
 import requests
@@ -225,11 +225,25 @@ def individual_printer_api(request):
 
     return JsonResponse(payload, safe=False)
 
+def upload_to_server(file):
+    upload_dir = Path("/home/nolop/Downloads/UPLOADED_3D_MODELS")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    file_path = upload_dir / file.name
+
+    with open(file_path, "wb+") as destination:
+        for chunk in file.chunks():
+            destination.write(chunk)
+
 @require_POST
-def upload_bgcode_api(request):
+def upload_file_api(request):
     uploaded_file = request.FILES.get("file")
     if uploaded_file is None:
         return JsonResponse({"error": "No file uploaded"}, status=400)
+    
+    # 0 = 3d model file, 1 = bgcode file
+    if request.GET.get("file_type") == 0:
+        upload_to_server(uploaded_file)
 
     slug = request.POST.get("slug")
     printer_djobj = get_object_or_404(Printers.objects.filter(slug=slug))
