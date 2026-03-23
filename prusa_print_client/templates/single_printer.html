@@ -48,11 +48,11 @@
                 <div class="upload-section">
                     <form id="uploadForm" onsubmit="uploadFile(event, 1)">
                         <div class="form-group">
-                            <label for="fileUpload">Select .bgcode file</label>
-                            <input type="file" id="fileUpload" accept=".bgcode" required>
-                            <div class="file-info" id="fileInfo"></div>
+                            <label for="bgcodeFileUpload">Select .bgcode file</label>
+                            <input type="file" id="bgcodeFileUpload" accept=".bgcode" required>
+                            <div class="file-info" id="bgcodeFileInfo"></div>
                         </div>
-                        <button type="button" id="uploadGcode" class="btn-submit">Upload and Queue Print</button>
+                        <button type="submit" class="btn-submit">Upload and Queue Print</button>
                     </form>
                 </div>
             </div>
@@ -62,8 +62,8 @@
                 <div class="model-upload-section">
                     <form id="modelUploadForm" onsubmit="uploadFile(event, 0)">
                         <div class="form-group">
-                            <label for="modelUpload">Select 3D model file (.stl, .obj, .3mf)</label>
-                            <input type="file" id="modelUpload" accept=".stl,.obj,.3mf" required>
+                            <label for="modelFileUpload">Select 3D model file (.stl, .obj, .3mf)</label>
+                            <input type="file" id="modelFileUpload" accept=".stl,.obj,.3mf" required>
                             <div class="file-info" id="modelFileInfo"></div>
                         </div>
                         <button type="submit" class="btn-submit">Upload Model for Slicing</button>
@@ -218,6 +218,11 @@
             return name.endsWith(".bgcode");
         }
 
+        function isModelFile(file) {
+            const name = file.name.toLowerCase();
+            return name.endsWith(".stl") || name.endsWith(".obj") || name.endsWith(".3mf");
+        }
+
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== "") {
@@ -235,27 +240,42 @@
         }
 
         async function uploadFile(event, upload_type) {
-            disableUploadForm(true);
             event.preventDefault();
 
-            const fileInput = document.getElementById('fileUpload');
-            const fileInfo  = document.getElementById('fileInfo');
+            const form = event.target;
+            disableUploadForm(form, true);
+            const fileInput = form.querySelector('input[type="file"]');
+            const fileInfo = form.querySelector('.file-info');
             const file = fileInput.files[0];
 
             if (!fileInput.files.length) {
                 fileInfo.style.color = "#ed4337"
                 fileInfo.style.backgroundColor = "#f79e9e"
                 fileInfo.textContent = "Please choose a file first";
-                disableUploadForm(false);
+                disableUploadForm(form, false);
                 return;
             }
 
-            if (!isBgcodeFile(file)) {
-                fileInfo.style.color = "#ed4337"
-                fileInfo.style.backgroundColor = "#f79e9e"
+            if (upload_type === 1 && !isBgcodeFile(file)) {
+                fileInfo.style.color = "#ed4337";
+                fileInfo.style.backgroundColor = "#f79e9e";
                 fileInfo.textContent = "File must be a .bgcode file";
                 fileInput.value = "";
-                disableUploadForm(false);
+                disableUploadForm(form, false);
+                return;
+            } else if (upload_type === 0 && !isModelFile(file)) {
+                fileInfo.style.color = "#ed4337";
+                fileInfo.style.backgroundColor = "#f79e9e";
+                fileInfo.textContent = "File must be a valid 3D model file (.stl, .obj, .3mf)";
+                fileInput.value = "";
+                disableUploadForm(form, false);
+                return;
+            } else if (upload_type !== 0 && upload_type !== 1) {
+                fileInfo.style.color = "#ed4337";
+                fileInfo.style.backgroundColor = "#f79e9e";
+                fileInfo.textContent = "Invalid upload type";
+                fileInput.value = "";
+                disableUploadForm(form, false);
                 return;
             }
 
@@ -285,20 +305,20 @@
                     fileInfo.style.color = "#2e7d32"
                     fileInfo.style.backgroundColor = "#e8f5e9"
                     fileInfo.textContent = `Upload success! File sent to ${data.remote_path ?? '(unknown path)'}`;
-                    disableUploadForm(false);
+                    disableUploadForm(form, false);
                 } else {
                     fileInput.value = '';
                     fileInfo.style.color = "#ed4337"
                     fileInfo.style.backgroundColor = "#fad2d2"
                     fileInfo.textContent = `Error ${data.status}: ${data.message}`;
-                    disableUploadForm(false);
+                    disableUploadForm(form, false);
                 }
 
             } catch (err) {
                 fileInfo.style.color = "#ed4337"
                 fileInfo.style.backgroundColor = "#fad2d2"
                 fileInfo.textContent = `Other err ${err.status}: ${err.message}`;
-                disableUploadForm(false);
+                disableUploadForm(form, false);
             }
         }
 
@@ -415,9 +435,9 @@
             document.getElementById('reportForm').reset();
         }
 
-        function disableUploadForm(disabled) {
-            const fileInput = document.getElementById('fileUpload');
-            const submitBtn = document.querySelector('#uploadForm .btn-submit');
+        function disableUploadForm(form, disabled) {
+            const fileInput = form.querySelector('input[type="file"]');
+            const submitBtn = form.querySelector('.btn-submit');
             const overlay = document.getElementById('loadingOverlay');
 
             fileInput.disabled = disabled;
@@ -440,21 +460,32 @@
         }
 
 
-        document.getElementById("uploadGcode").addEventListener("click", uploadFile);
-
         // Load printer data when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            const fileInput = document.getElementById('fileUpload');
-            const fileInfo = document.getElementById('fileInfo');
-            
-            fileInput.addEventListener('change', function() {
-                if (this.files && this.files[0]) {
-                    const file = this.files[0];
-                    fileInfo.textContent = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
-                    fileInfo.classList.add('show');
-                } else {
-                    fileInfo.classList.remove('show');
+            const uploadPairs = [
+                {
+                    input: document.getElementById('bgcodeFileUpload'),
+                    info: document.getElementById('bgcodeFileInfo'),
+                },
+                {
+                    input: document.getElementById('modelFileUpload'),
+                    info: document.getElementById('modelFileInfo'),
                 }
+            ];
+
+            uploadPairs.forEach(({ input, info }) => {
+                if (!input || !info) return;
+
+                input.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        const file = this.files[0];
+                        info.textContent = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                        info.classList.add('show');
+                    } else {
+                        info.textContent = '';
+                        info.classList.remove('show');
+                    }
+                });
             });
         });
 
