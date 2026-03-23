@@ -43,30 +43,30 @@
                 </div>
             </div>
 
-            <!-- <div class="actions">
-                <h3>Upload 3D Model (not currently functional)</h3>
-                <div class="model-upload-section">
-                    <form id="modelUploadForm" onsubmit="uploadModel(event)">
-                        <div class="form-group">
-                            <label for="modelUpload">Select 3D model file (.stl, .obj, .3mf)</label>
-                            <input type="file" id="modelUpload" accept=".stl,.obj,.3mf" required>
-                            <div class="file-info" id="modelFileInfo"></div>
-                        </div>
-                        <button type="submit" class="btn-submit">Upload Model for Slicing</button>
-                    </form>
-                </div>
-            </div> -->
-
             <div class="actions">
                 <h3>Upload Print File</h3>
                 <div class="upload-section">
-                    <form id="uploadForm">
+                    <form id="uploadForm" onsubmit="uploadFile(event, 1)">
                         <div class="form-group">
                             <label for="fileUpload">Select .bgcode file</label>
                             <input type="file" id="fileUpload" accept=".bgcode" required>
                             <div class="file-info" id="fileInfo"></div>
                         </div>
                         <button type="button" id="uploadGcode" class="btn-submit">Upload and Queue Print</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="actions">
+                <h3>Upload 3D Model (not currently functional)</h3>
+                <div class="model-upload-section">
+                    <form id="modelUploadForm" onsubmit="uploadFile(event, 0)">
+                        <div class="form-group">
+                            <label for="modelUpload">Select 3D model file (.stl, .obj, .3mf)</label>
+                            <input type="file" id="modelUpload" accept=".stl,.obj,.3mf" required>
+                            <div class="file-info" id="modelFileInfo"></div>
+                        </div>
+                        <button type="submit" class="btn-submit">Upload Model for Slicing</button>
                     </form>
                 </div>
             </div>
@@ -234,7 +234,7 @@
             return cookieValue;
         }
 
-        async function uploadFile(event) {
+        async function uploadFile(event, upload_type) {
             disableUploadForm(true);
             event.preventDefault();
 
@@ -267,8 +267,11 @@
             fileInfo.style.backgroundColor = "#fcf5d4"
             fileInfo.textContent = 'Uploading...';
 
+            const url = new URL("{% url 'printers:upload_file_api' %}", window.location.origin);
+            url.searchParams.append("file_type", upload_type);
+
             try {
-                const res = await fetch("{% url 'printers:upload_bgcode_api' %}", {
+                const res = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'X-CSRFToken': getCookie('csrftoken'),
