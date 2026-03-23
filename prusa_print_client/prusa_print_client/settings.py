@@ -33,7 +33,6 @@ ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if
 
 if DEBUG and not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["*"]  # dev convenience
-DEBUG_PROPAGATE_EXCEPTIONS = True
 
 
 # Application definition
