@@ -225,6 +225,8 @@ def individual_printer_api(request):
 
     return JsonResponse(payload, safe=False)
 
+
+
 def upload_to_server(file):
     upload_dir = Path("/home/nolop/Downloads/UPLOADED_3D_MODELS")
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -235,15 +237,24 @@ def upload_to_server(file):
         for chunk in file.chunks():
             destination.write(chunk)
 
+    if not file_path.exists():
+        raise RuntimeError(f"File was not found after save: {file_path}")
+
 @require_POST
-def upload_file_api(request):
+def upload_file_api(request, is_bgcode):
     uploaded_file = request.FILES.get("file")
     if uploaded_file is None:
         return JsonResponse({"error": "No file uploaded"}, status=400)
     
     # 0 = 3d model file, 1 = bgcode file
-    if request.GET.get("file_type") == 0:
+    if is_bgcode == 0:
         upload_to_server(uploaded_file)
+        return JsonResponse(
+            {
+                "success": True,
+                "remote_path": str("/home/nolop/Downloads/UPLOADED_3D_MODELS"),
+            }
+        )
 
     slug = request.POST.get("slug")
     printer_djobj = get_object_or_404(Printers.objects.filter(slug=slug))
@@ -311,9 +322,9 @@ def upload_file_api(request):
                 }
                 return JsonResponse(data)
 
-        print(filament_mm)
-        print(filament_g)
-        print(filament_cm3)
+        # print(filament_mm)
+        # print(filament_g)
+        # print(filament_cm3)
         if filament_mm is not None or filament_g is not None or filament_cm3 is not None:
             PendingJobUsage.objects.create(
                 printer=printer_djobj,
