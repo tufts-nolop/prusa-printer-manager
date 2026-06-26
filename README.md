@@ -28,6 +28,22 @@ You can check that Caddy is running with `sudo systemctl status caddy`. You shou
 
 Install Gunicorn as a WSGI server to serve Django behind the Caddy front end.
 
+```bash
+sudo apt install gunicorn
+```
+
+Install Django (version 6.0.6 as of June 2026).
+
+```bash
+sudo pip3 install --break-system-packages django
+```
+
+Clone this repository onto the Pi.
+
+```bash
+git clone https://github.com/tufts-nolop/prusa-printer-manager.git
+```
+
 ## Roadmap
 
 - Add error handling to:
