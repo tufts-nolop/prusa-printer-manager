@@ -40,10 +40,10 @@ Install Gunicorn as a WSGI server to serve Django behind the Caddy front end. Al
 sudo apt install gunicorn python3-dotenv
 ```
 
-Install Django (version 6.0.6 as of June 2026).
+Install Django (version 6.0.6 as of June 2026) and the PrusaLink Python library.
 
 ```bash
-sudo pip3 install --break-system-packages django
+sudo pip3 install --break-system-packages django prusalinkpy
 ```
 
 Clone this repository onto the Pi.
