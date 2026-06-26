@@ -26,10 +26,10 @@ You can check that Caddy is running with `sudo systemctl status caddy`. You shou
      Active: active (running) since Fri 2026-06-26 12:25:05 EDT; 21min ago
 ```
 
-Install Gunicorn as a WSGI server to serve Django behind the Caddy front end.
+Install Gunicorn as a WSGI server to serve Django behind the Caddy front end. Also install the `dotenv` Python module to hold Django credentials.
 
 ```bash
-sudo apt install gunicorn
+sudo apt install gunicorn python3-dotenv
 ```
 
 Install Django (version 6.0.6 as of June 2026).
