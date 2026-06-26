@@ -2,17 +2,31 @@
 
 A Django based web app whose primary mission is to send print jobs to Nolop's Prusa 3D printers. It additionally collects data from each printer for Nolop staff to better monitor the current status and health of each printer.
 
-
 ## Setup
 
-It is recommended to either install [Anaconda](https://www.anaconda.com/download) or [Miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install) then run the following to install the environment:
+Set up a Raspberry Pi 5 with SSH running on port 22. Record its MAC addresses for both `wlan0` and `eth0`. We want the Pi to be on the Tufts wired network, which requires registering the MAC address (we think), and it's nice to be able to tell which interface we're using.
+
+Install Caddy as a reverse proxy server using the commands below. (You could also use Nginx, but we expect that SSL maintenance will be easier with Caddy.)
 
 ```bash
-  conda env create -f environment.yml
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo chmod o+r /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+sudo chmod o+r /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update
+sudo apt install caddy
 ```
 
-This command will create a Python environment with all the packages needed to run the server.
-(INCOMPLETE SETUP INSTRUSTIONS)
+You can check that Caddy is running with `sudo systemctl status caddy`. You should see a response that starts with:
+
+```bash
+● caddy.service - Caddy
+     Loaded: loaded (/usr/lib/systemd/system/caddy.service; enabled; preset: enabled)
+     Active: active (running) since Fri 2026-06-26 12:25:05 EDT; 21min ago
+```
+
+Install Gunicorn as a WSGI server to serve Django behind the Caddy front end.
 
 ## Roadmap
 
@@ -24,4 +38,3 @@ This command will create a Python environment with all the packages needed to ru
 - ~~Add staff dashboard to display all the printer analytics~~
 - PrintGuard integration to automatically stop bad/failed prints
 - Reporting issues with the printer
-- Whatever else anyone wants to see in this thing
