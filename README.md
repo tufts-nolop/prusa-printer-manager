@@ -29,7 +29,7 @@ You can check that Caddy is running with `sudo systemctl status caddy`. You shou
 Use this Caddyfile:
 
 ```
-:80 {
+printers.nolop.org {
     tls {
         dns gandi {env.GANDI_PAT}
     }
