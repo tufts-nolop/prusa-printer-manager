@@ -34,6 +34,29 @@ Use this Caddyfile:
 }
 ```
 
+Need to recompile the Caddy binary to include the Gandi DNS plugin for SSL cert renewal.
+
+Install `xcaddy` and build the new binary.
+
+```bash
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/xcaddy/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-xcaddy-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/xcaddy/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-xcaddy.list
+sudo apt update
+sudo apt install xcaddy
+xcaddy build --with github.com/caddy-dns/gandi
+```
+Install the new binary.
+
+```bash
+sudo dpkg-divert --divert /usr/bin/caddy.default --rename /usr/bin/caddy
+sudo mv ./caddy /usr/bin/caddy.custom
+sudo update-alternatives --install /usr/bin/caddy caddy /usr/bin/caddy.default 10
+sudo update-alternatives --install /usr/bin/caddy caddy /usr/bin/caddy.custom 50
+sudo systemctl restart caddy
+```
+
+(After this, `caddy upgrade` should allegedly still work. [The allegations are here.](https://caddyserver.com/docs/build#package-support-files-for-custom-builds-for-debianubunturaspbian))
+
 Install Gunicorn as a WSGI server to serve Django behind the Caddy front end. Also install the `dotenv` Python module to hold Django credentials and `whitenoise` which will serve static files.
 
 ```bash
