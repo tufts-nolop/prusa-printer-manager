@@ -91,6 +91,13 @@ Create a file at `prusa-printer-manager/prusa_print_client/.env` that contains a
 
 Start `gunicorn` with `gunicorn prusa_print_client.wsgi:application --bind 127.0.0.1:8000 --workers 3`
 
+Now we set up the printers.
+
+```bash
+python manage.py migrate
+python manage.py createsuperuser
+```
+
 ## Roadmap
 
 - Add error handling to:
