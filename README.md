@@ -30,7 +30,10 @@ Use this Caddyfile:
 
 ```
 :80 {
-        reverse_proxy localhost:8000
+    tls {
+        dns gandi {env.GANDI_PAT}
+    }
+    reverse_proxy localhost:8000
 }
 ```
 
@@ -56,6 +59,15 @@ sudo systemctl restart caddy
 ```
 
 (After this, `caddy upgrade` should allegedly still work. [The allegations are here.](https://caddyserver.com/docs/build#package-support-files-for-custom-builds-for-debianubunturaspbian))
+
+Get a Gandi personal access token. Add the Gandi token to a `systemd` conf override file with the command `sudo systemctl edit caddy`.
+
+Put this in the file with the personal access token inserted.
+
+```ini
+[Service]
+Environment="GANDI_PAT=your-token-here"
+```
 
 Install Gunicorn as a WSGI server to serve Django behind the Caddy front end. Also install the `dotenv` Python module to hold Django credentials and `whitenoise` which will serve static files.
 
