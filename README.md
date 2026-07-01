@@ -98,6 +98,8 @@ python manage.py migrate
 python manage.py createsuperuser
 ```
 
+Navigate to the admin dashboard at [https://printers.nolop.org/admin/](https://printers.nolop.org/admin/) to add printers.
+
 ## Roadmap
 
 - Add error handling to:
