@@ -102,8 +102,8 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Last Maintenance</div>
-                    {% if printer.last_maintenance|date:"F j, Y, P" %}
-                        <div class="stat-value" id="lastMaintenance">{{ printer.last_maintenance|date:"F j, Y, P" }}</div>
+                    {% if printer.last_maintenance|date:"F j, Y" %}
+                        <div class="stat-value" id="lastMaintenance">{{ printer.last_maintenance|date:"F j, Y" }}</div>
                     {% else %}
                         <div class="stat-value" id="lastMaintenance">--</div>
                     {% endif %}
