@@ -113,12 +113,13 @@ def printers_status_api(request):
         status = "offline"  # default if anything goes wrong
 
         try:
-            client = PrusaLinkPy.PrusaLinkPy(printer.host, api_key=printer.api_key)
-
-            resp = client.get_status()
-            resp.raise_for_status()  # raises for HTTP 4xx/5xx
-
-            status_json = resp.json()
+            response = requests.get(
+                 f"http://{printer.host}/api/v1/status",
+                headers={"X-Api-Key": printer.api_key},
+                timeout=5,
+            )
+            response.raise_for_status()
+            status_json = response.json()
             raw_state = status_json.get("printer", {}).get("state")
 
             if raw_state is not None:
@@ -149,10 +150,19 @@ def individual_printer_api(request):
     
     printer_djobj = get_object_or_404(Printers.objects.filter(slug=data["slug"]))
     printer_actual = PrusaLinkPy.PrusaLinkPy(str(printer_djobj.host), str(printer_djobj.api_key))
+
     try:
-        status_resp = printer_actual.get_status()
-        job_resp = printer_actual.get_job()
-    except:
+        status_resp = requests.get(
+            f"http://{printer_djobj.host}/api/v1/status",
+            headers={"X-Api-Key": printer_djobj.api_key},
+            timeout=5,
+        )
+        job_resp = requests.get(
+            f"http://{printer_djobj.host}/api/v1/job",
+            headers={"X-Api-Key": printer_djobj.api_key},
+            timeout=5,
+        )
+    except requests.exceptions.RequestException:
         return JsonResponse(
                 {
                     "error": "Printer unavailable"
@@ -160,13 +170,12 @@ def individual_printer_api(request):
                 status=502,
             )
 
-    # resp = printer_actual.get_status()
     status = status_resp.json()
 
     printer_info = status.get("printer", {})
     more_job_info     = status.get("job", {})
 
-   # bc there could be a good ststus code but no active job on the printer
+   # bc there could be a good status code but no active job on the printer
    # jankass solution but it works so whatever
     filament_usage = None
     if job_resp.status_code == 204 or not job_resp.content.strip():
@@ -179,14 +188,13 @@ def individual_printer_api(request):
     
 
     dt = printer_djobj.last_maintenance
-    dt = timezone.localtime(dt)  # optional: convert to local time?
 
     nozzle_temp    = printer_info.get("temp_nozzle", 0)        # °C
     bed_temp       = printer_info.get("temp_bed", 0)           # °C
     progress       = more_job_info.get("progress", 0)               # percent (0–100)
     time_remaining = more_job_info.get("time_remaining", 0)        # seconds
     curr_status    = map_printer_status(printer_info["state"])
-    date_string    = date_format(dt, "Y-m-d")
+    date_string    = date_format(dt, "Y-m-d") if dt else ""
 
     
 
