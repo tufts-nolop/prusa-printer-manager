@@ -15,11 +15,17 @@ from django.shortcuts import get_object_or_404, render
 from django.forms.models import model_to_dict
 from django.utils.formats import date_format
 from django.utils import timezone
+from datetime import timedelta
 import requests
 
 from .utils import *
 from .models import Printers, PendingJobUsage
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+COOLDOWN_SECONDS = 15
 
 ########## Helper funcs ##########
 
@@ -68,6 +74,28 @@ def remote_file_exists_usb(client, remote_path: str) -> bool:
     # anything else is useful to see (403, 401, 500)
     print("exists check failed:", r.status_code, r.text[:200])
     return False
+
+
+def printer_in_cooldown(printer_djobj) -> bool:
+    """True if this printer failed recently and we should skip hitting the network."""
+    if not printer_djobj.last_failure_at:
+        return False
+    return timezone.now() - printer_djobj.last_failure_at < timedelta(seconds=COOLDOWN_SECONDS)
+
+
+def mark_printer_failed(printer_djobj):
+    printer_djobj.last_failure_at = timezone.now()
+    printer_djobj.save(update_fields=["last_failure_at"])
+
+
+def clear_printer_failure(printer_djobj):
+    if printer_djobj.last_failure_at is not None:
+        logger.info(
+            "individual_printer_api: printer recovered slug=%s host=%s was_failing_since=%s",
+            printer_djobj.slug, printer_djobj.host, printer_djobj.last_failure_at,
+        )
+        printer_djobj.last_failure_at = None
+        printer_djobj.save(update_fields=["last_failure_at"])
 
 
 ########## Django views ##########
@@ -147,56 +175,76 @@ def individual_printer_api(request):
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return HttpResponseBadRequest("Invalid JSON")
-    
-    printer_djobj = get_object_or_404(Printers.objects.filter(slug=data["slug"]))
-    printer_actual = PrusaLinkPy.PrusaLinkPy(str(printer_djobj.host), str(printer_djobj.api_key))
+
+    slug = data.get("slug")
+    if not slug:
+        return HttpResponseBadRequest("Missing slug")
+
+    printer_djobj = get_object_or_404(Printers.objects.filter(slug=slug))
+
+    # Circuit breaker: skip the network call entirely if this printer failed recently
+    if printer_in_cooldown(printer_djobj):
+        logger.info(
+            "individual_printer_api: skipping call, printer in cooldown slug=%s host=%s",
+            printer_djobj.slug, printer_djobj.host,
+        )
+        return JsonResponse(
+            {"error": "Printer recently unavailable, retrying soon", "printer": printer_djobj.slug},
+            status=502,
+        )
 
     try:
         status_resp = requests.get(
             f"http://{printer_djobj.host}/api/v1/status",
             headers={"X-Api-Key": printer_djobj.api_key},
-            timeout=5,
+            timeout=(1.5, 3),
         )
+        status_resp.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        logger.warning(
+            "individual_printer_api: status call failed slug=%s host=%s error=%s",
+            printer_djobj.slug, printer_djobj.host, e,
+        )
+        mark_printer_failed(printer_djobj)
+        return JsonResponse({"error": "Printer unavailable", "printer": printer_djobj.slug}, status=502)
+
+    try:
         job_resp = requests.get(
             f"http://{printer_djobj.host}/api/v1/job",
             headers={"X-Api-Key": printer_djobj.api_key},
-            timeout=5,
+            timeout=(1.5, 3),
         )
-    except requests.exceptions.RequestException:
-        return JsonResponse(
-                {
-                    "error": "Printer unavailable"
-                },
-                status=502,
-            )
+    except requests.exceptions.RequestException as e:
+        logger.warning(
+            "individual_printer_api: job call failed slug=%s host=%s error=%s",
+            printer_djobj.slug, printer_djobj.host, e,
+        )
+        mark_printer_failed(printer_djobj)
+        return JsonResponse({"error": "Printer unavailable", "printer": printer_djobj.slug}, status=502)
+
+    # Both calls succeeded — clear any prior failure state
+    clear_printer_failure(printer_djobj)
 
     status = status_resp.json()
-
     printer_info = status.get("printer", {})
-    more_job_info     = status.get("job", {})
+    more_job_info = status.get("job", {})
 
-   # bc there could be a good status code but no active job on the printer
-   # jankass solution but it works so whatever
     filament_usage = None
     if job_resp.status_code == 204 or not job_resp.content.strip():
         job_info = None
     else:
-        job_resp.raise_for_status()  # will only raise on 4xx/5xx
+        job_resp.raise_for_status()
         job_info = job_resp.json()
         filament_usage = get_filament_usage_from_running_job(printer_djobj, printer_info, job_info)
-    # resp.raise_for_status()
-    
 
     dt = printer_djobj.last_maintenance
 
-    nozzle_temp    = printer_info.get("temp_nozzle", 0)        # °C
-    bed_temp       = printer_info.get("temp_bed", 0)           # °C
-    progress       = more_job_info.get("progress", 0)               # percent (0–100)
-    time_remaining = more_job_info.get("time_remaining", 0)        # seconds
+    nozzle_temp    = printer_info.get("temp_nozzle", 0)
+    bed_temp       = printer_info.get("temp_bed", 0)
+    progress       = more_job_info.get("progress", 0)
+    time_remaining = more_job_info.get("time_remaining", 0)
     curr_status    = map_printer_status(printer_info["state"])
     date_string    = date_format(dt, "Y-m-d") if dt else ""
-
-    
 
     payload = model_to_dict(printer_djobj)
     payload["nozzle_temp"]      = nozzle_temp
@@ -205,19 +253,16 @@ def individual_printer_api(request):
     payload["curr_status"]      = curr_status
     payload["last_maintenance"] = date_string
 
-    # print(time_remaining)
     if (time_remaining / 60) > 100:
-        payload["time_remaining"] = round(((time_remaining / 60) / 60)) # convert to hours if big
+        payload["time_remaining"] = round(((time_remaining / 60) / 60))
         payload["time_units"]     = " hours"
     else:
-        payload["time_remaining"] = (round(time_remaining / 60)) # convert to min
-        payload["time_units"]     = " minutes"    
-        
+        payload["time_remaining"] = round(time_remaining / 60)
+        payload["time_units"]     = " minutes"
+
     if filament_usage is not None:
-        payload["usage_mm"] = filament_usage[0]
-    if filament_usage is not None:
-        payload["usage_g"] = filament_usage[1]
-    if filament_usage is not None:
+        payload["usage_mm"]  = filament_usage[0]
+        payload["usage_g"]   = filament_usage[1]
         payload["usage_cm3"] = filament_usage[2]
 
     if request.user.is_superuser:
@@ -227,13 +272,11 @@ def individual_printer_api(request):
             succ_rate = ""
         payload["success_rate"] = succ_rate
         payload["total_prints"] = printer_djobj.total_print_count
-        payload["total_filament_usage_mm"] = printer_djobj.filament_usage_mm
+        payload["total_filament_usage_mm"]  = printer_djobj.filament_usage_mm
         payload["total_filament_usage_cm3"] = printer_djobj.filament_usage_cm3
-        payload["total_filament_usage_g"] = printer_djobj.filament_usage_g
+        payload["total_filament_usage_g"]   = printer_djobj.filament_usage_g
 
     return JsonResponse(payload, safe=False)
-
-
 
 def upload_to_server(file):
     upload_dir = Path("/home/nolop/Downloads/UPLOADED_3D_MODELS")

@@ -48,9 +48,9 @@
                 <div class="upload-section">
                     <form id="uploadForm" onsubmit="uploadFile(event, 1)">
                         <div class="form-group">
-                            <label for="bgcodeFileUpload">Select .bgcode file</label>
-                            <input type="file" id="bgcodeFileUpload" accept=".bgcode" required>
-                            <div class="file-info" id="bgcodeFileInfo"></div>
+                            <label for="printFileUpload">Select file (.bgcode or .gcode files are okay)</label>
+                            <input type="file" id="printFileUpload" required>
+                            <div class="file-info" id="printFileInfo"></div>
                         </div>
                         <button type="submit" class="btn-submit">Upload and Queue Print</button>
                     </form>
@@ -211,11 +211,11 @@
     </div>
 
     <script>
-        function isBgcodeFile(file) {
+        function isPrintableFile(file) {
             if (!file) return false;
 
             const name = file.name.toLowerCase();
-            return name.endsWith(".bgcode");
+            return name.endsWith("gcode");
         }
 
         function isModelFile(file) {
@@ -256,7 +256,7 @@
                 return;
             }
 
-            if (upload_type === 1 && !isBgcodeFile(file)) {
+            if (upload_type === 1 && !isPrintableFile(file)) {
                 fileInfo.style.color = "#ed4337";
                 fileInfo.style.backgroundColor = "#f79e9e";
                 fileInfo.textContent = "File must be a .bgcode file";

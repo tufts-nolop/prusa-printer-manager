@@ -18,6 +18,8 @@ class Printers(models.Model):
     date_added = models.DateField(auto_now=False, auto_now_add=False)
     slug = models.SlugField(max_length=64, unique=True)
 
+    last_failure_at = models.DateTimeField(null=True, blank=True)
+
     staff_notes = models.TextField()
     last_maintenance = models.DateField(auto_now=False, auto_now_add=False, null=True, blank=True)
 
